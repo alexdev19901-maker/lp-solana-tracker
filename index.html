@@ -797,21 +797,55 @@ async function fetchPositionBins(positionPubkey) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MAIN FETCH — all positions for one wallet
+// STEP 1 — Get all position pubkeys for a wallet via Helius
+// Meteora Position layout:
+//   bytes 0-7:   discriminator
+//   bytes 8-39:  lb_pair (pool pubkey)
+//   bytes 40-71: owner (wallet pubkey) ← memcmp filter at offset 40
+// ═══════════════════════════════════════════════════════════════════
+async function getPositionPubkeys(walletAddress) {
+  const results = await rpcCall('getProgramAccounts', [
+    METEORA_DLMM_PROGRAM,
+    {
+      encoding: 'base64',
+      filters: [
+        { memcmp: { offset: 40, bytes: walletAddress } }
+      ]
+    }
+  ]);
+  return (results || []).map(r => r.pubkey);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STEP 2 — Fetch full position detail from Meteora REST API
+// GET /position/{address} returns token info, bin data, amounts, fees
+// ═══════════════════════════════════════════════════════════════════
+async function fetchPositionDetail(positionAddress) {
+  try {
+    const res = await fetch(`https://dlmm-api.meteora.ag/position/${positionAddress}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MAIN FETCH — combine step 1 + step 2
 // ═══════════════════════════════════════════════════════════════════
 async function fetchWalletPositions(walletAddress) {
-  // Use Meteora's own REST API — most reliable source for DLMM positions
-  try {
-    const res = await fetch(
-      `https://dlmm-api.meteora.ag/position/user/${walletAddress}`
-    );
-    if (!res.ok) throw new Error(`Meteora API error: ${res.status}`);
-    const data = await res.json();
-    return data;
-  } catch(e) {
-    console.error('Meteora API failed, trying Helius fallback:', e);
-    return null;
+  const pubkeys = await getPositionPubkeys(walletAddress);
+  console.log(`[${walletAddress.slice(0,6)}] found ${pubkeys.length} position accounts`);
+  if (!pubkeys.length) return [];
+
+  // Fetch details in batches of 5 to respect rate limits
+  const BATCH = 5;
+  const details = [];
+  for (let i = 0; i < pubkeys.length; i += BATCH) {
+    const batch = pubkeys.slice(i, i + BATCH);
+    const results = await Promise.all(batch.map(pk => fetchPositionDetail(pk)));
+    details.push(...results.filter(Boolean));
+    if (i + BATCH < pubkeys.length) await new Promise(r => setTimeout(r, 300));
   }
+  return details;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -912,66 +946,92 @@ function renderCards(walletsData) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PARSE METEORA API RESPONSE → normalized position objects
+// PARSE — convert Meteora /position/{address} response to normalized object
+// Response schema from dlmm-api.meteora.ag/position/{address}:
+// {
+//   address: string,
+//   pair_address: string,
+//   owner: string,
+//   lower_bin_id: number,
+//   upper_bin_id: number,
+//   total_x_amount: string,   // raw token amount
+//   total_y_amount: string,
+//   fee_x: string,
+//   fee_y: string,
+//   reward_one: string,
+//   reward_two: string,
+//   lb_pair: {
+//     address, name, mint_x, mint_y,
+//     bin_step: number,
+//     token_x: { symbol, decimals, amount, usd_amount },
+//     token_y: { symbol, decimals, amount, usd_amount },
+//     current_price: number,
+//     price_usd: number,
+//   },
+//   position_bin_data: [ { bin_id, price, position_liquidity, bin_liquidity } ]
+// }
 // ═══════════════════════════════════════════════════════════════════
-async function parseMeteoraPositions(rawData) {
-  if (!rawData) return [];
-  // Meteora API returns array of position groups per pool
+async function parseMeteoraPositions(rawDetails) {
+  if (!rawDetails || !rawDetails.length) return [];
   const positions = [];
 
-  const items = Array.isArray(rawData) ? rawData : (rawData.userPositions || rawData.positions || []);
-
-  for (const item of items) {
+  for (const item of rawDetails) {
     try {
-      // Each item represents one position
-      const pos = item.position || item;
-      const poolInfo = item.lbPair || item.pool || {};
+      const lb = item.lb_pair || {};
+      const tokenX = lb.token_x || {};
+      const tokenY = lb.token_y || {};
 
-      // Token symbols
-      const xSymbol = poolInfo?.tokenX?.symbol || poolInfo?.mintX?.slice(0,4) || '???';
-      const ySymbol = poolInfo?.tokenY?.symbol || poolInfo?.mintY?.slice(0,4) || '???';
+      // Pair name
+      const xSymbol = tokenX.symbol || (lb.mint_x || '').slice(0, 4) || '???';
+      const ySymbol = tokenY.symbol || (lb.mint_y || '').slice(0, 4) || '???';
       const pairName = `${xSymbol}/${ySymbol}`;
       const quoteSymbol = ySymbol;
 
-      // Price range from bin IDs
-      const binStep   = poolInfo?.binStep || 1;
-      const decimalsX = poolInfo?.tokenX?.decimals ?? 9;
-      const decimalsY = poolInfo?.tokenY?.decimals ?? 6;
-      const lowerBin  = pos.lowerBinId || pos.positionData?.lowerBinId || 0;
-      const upperBin  = pos.upperBinId || pos.positionData?.upperBinId || 0;
+      // Price range
+      const binStep   = lb.bin_step || 1;
+      const decimalsX = tokenX.decimals ?? 9;
+      const decimalsY = tokenY.decimals ?? 6;
+      const lowerBin  = item.lower_bin_id || 0;
+      const upperBin  = item.upper_bin_id || 0;
       const minPrice  = binIdToPrice(lowerBin, binStep, decimalsX, decimalsY);
       const maxPrice  = binIdToPrice(upperBin, binStep, decimalsX, decimalsY);
 
-      // USD values
-      const totalUsd = parseFloat(pos.totalXAmount || 0) * parseFloat(poolInfo?.tokenX?.priceUSD || 0)
-                     + parseFloat(pos.totalYAmount || 0) * parseFloat(poolInfo?.tokenY?.priceUSD || 0)
-                     || parseFloat(item.currentPositionValues?.positionValue || 0)
-                     || 0;
+      // USD values — Meteora returns usd_amount directly on token_x/token_y
+      const xUsd = parseFloat(tokenX.usd_amount || 0);
+      const yUsd = parseFloat(tokenY.usd_amount || 0);
+      const totalUsd = xUsd + yUsd;
 
-      const depositedUsd = parseFloat(item.currentPositionValues?.depositedValue || 0);
-      const feesUsd      = parseFloat(item.currentPositionValues?.totalFeeValue
-                        || pos.feeX || 0)
-                        + parseFloat(pos.feeY || 0);
-      const pnlUsd = totalUsd - depositedUsd + feesUsd;
+      // Fees in USD
+      const feeXAmt  = parseFloat(item.fee_x || 0) / Math.pow(10, decimalsX);
+      const feeYAmt  = parseFloat(item.fee_y || 0) / Math.pow(10, decimalsY);
+      const xPrice   = parseFloat(lb.price_usd || lb.current_price || 0);
+      const yPrice   = xPrice > 0 ? 1 : 0; // y is usually USD-denominated
+      // Try to get y price from token amounts if available
+      const feesUsd  = parseFloat(item.total_fee_usd || 0)
+                    || (feeXAmt * xPrice + feeYAmt);
 
-      // Strategy detection from bin liquidity distribution
-      const bins = pos.positionBinData || pos.bins || [];
-      const strategy = detectStrategy(bins);
+      // P&L — Meteora doesn't directly give deposited value in this endpoint
+      // Use 0 for now (will add deposit tracking later)
+      const pnlUsd = 0;
+
+      // Strategy from bin data
+      const bins = item.position_bin_data || [];
+      const strategy = detectStrategy(bins.map(b => ({ liquiditySupply: b.position_liquidity || b.bin_liquidity || 0 })));
 
       // Pool address
-      const poolAddress = item.publicKey || poolInfo?.publicKey || pos.lbPair || '';
+      const poolAddress = item.pair_address || lb.address || '';
 
       positions.push({
         pairName, quoteSymbol, minPrice, maxPrice,
         totalUsd, pnlUsd, feesUsd,
         strategy, poolAddress
       });
-    } catch(e) { console.warn('Error parsing position:', e); }
+    } catch(e) {
+      console.warn('Error parsing position:', e, item);
+    }
   }
-
   return positions;
 }
-
 // ═══════════════════════════════════════════════════════════════════
 // LOADING STATE
 // ═══════════════════════════════════════════════════════════════════
