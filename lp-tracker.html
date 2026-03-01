@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meteora LP Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --surface: #0d1117;
+    --surface2: #131920;
+    --surface3: #1a2230;
+    --border: #1e2d3d;
+    --border2: #243344;
+    --text: #e2e8f0;
+    --text2: #8899aa;
+    --text3: #4a6070;
+    --green: #00e676;
+    --green-dim: #00e67618;
+    --red: #ff4757;
+    --red-dim: #ff475718;
+    --yellow: #ffd32a;
+    --blue: #00b4ff;
+    --blue-dim: #00b4ff12;
+    --purple: #bf80ff;
+    --purple-dim: #bf80ff18;
+    --orange: #ff8c42;
+    --orange-dim: #ff8c4218;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  .nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(8,12,16,0.97);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: center; gap: 16px;
+    height: 52px;
+  }
+  .nav-brand {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 15px;
+    color: var(--green); letter-spacing: -0.5px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-brand-icon {
+    width: 24px; height: 24px;
+    background: var(--green-dim);
+    border: 1px solid var(--green)44;
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .nav-sep { width: 1px; height: 24px; background: var(--border); }
+  .nav-info { font-size: 10px; color: var(--text3); letter-spacing: 0.5px; }
+  .nav-info span { color: var(--text2); }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .nav-stat { display: flex; flex-direction: column; align-items: flex-end; }
+  .nav-stat-val { font-size: 12px; font-weight: 600; color: var(--text); }
+  .nav-stat-label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; }
+  .pulse-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  /* MAIN */
+  .main { padding: 14px 24px; }
+
+  /* CARDS GRID */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  /* WALLET CARD */
+  .wallet-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .wallet-card:hover {
+    border-color: var(--border2);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--surface3);
+    border-bottom: 1px solid var(--border);
+  }
+  .card-addr-row { display: flex; align-items: center; gap: 8px; }
+  .card-addr {
+    font-size: 12px; font-weight: 700; color: var(--blue);
+    letter-spacing: 0.3px;
+  }
+  .card-copy {
+    font-size: 9px; color: var(--text3);
+    cursor: pointer; padding: 2px 5px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    transition: all 0.1s;
+    background: none;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .card-copy:hover { color: var(--text2); border-color: var(--border2); }
+  .card-totals { display: flex; gap: 14px; align-items: center; }
+  .card-total-val { font-size: 13px; font-weight: 700; color: var(--text); }
+  .card-pnl { font-size: 11px; font-weight: 600; }
+
+  /* COLUMN HEADERS */
+  .card-col-headers {
+    display: grid;
+    grid-template-columns: 1fr 68px 68px 80px;
+    padding: 4px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .cc-h {
+    font-size: 9px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.7px;
+    text-align: right;
+  }
+  .cc-h:first-child { text-align: left; }
+
+  /* POSITION ROW */
+  .card-pos-row {
+    display: grid;
+    grid-template-columns: 1fr 68px 68px 80px;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--border)44;
+    align-items: center;
+    transition: background 0.1s;
+  }
+  .card-pos-row:last-child { border-bottom: none; }
+  .card-pos-row:hover { background: var(--surface2); }
+
+  .cp-left { display: flex; flex-direction: column; gap: 4px; }
+  .cp-pair { font-size: 12px; font-weight: 700; color: var(--text); }
+  .cp-meta { display: flex; align-items: center; gap: 5px; }
+
+  /* METEORA LINK BUTTON */
+  .meteora-link {
+    display: inline-flex; align-items: center; gap: 3px;
+    text-decoration: none;
+    padding: 2px 5px 2px 3px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,180,255,0.2);
+    background: var(--blue-dim);
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .meteora-link:hover {
+    border-color: rgba(0,180,255,0.5);
+    background: rgba(0,180,255,0.12);
+    transform: translateY(-1px);
+  }
+  .meteora-logo {
+    width: 12px; height: 12px;
+    border-radius: 2px;
+    object-fit: contain;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
+    /* SVG inline logo */
+  }
+  .meteora-link-text {
+    font-size: 8px; font-weight: 600;
+    color: var(--blue);
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  /* STRATEGY TAG */
+  .strategy-tag {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 9px; font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  .strat-spot {
+    background: var(--green-dim);
+    color: var(--green);
+    border: 1px solid var(--green)33;
+  }
+  .strat-bidask {
+    background: var(--purple-dim);
+    color: var(--purple);
+    border: 1px solid var(--purple)33;
+  }
+  .strat-curve {
+    background: var(--orange-dim);
+    color: var(--orange);
+    border: 1px solid var(--orange)33;
+  }
+  .strat-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor;
+    opacity: 0.8;
+  }
+
+  .cp-range {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.2px;
+    line-height: 1.2;
+  }
+  .cp-range-token {
+    color: var(--text3);
+    font-size: 9px;
+    opacity: 0.7;
+  }
+
+  .cp-cell {
+    font-size: 11px; color: var(--text2);
+    text-align: right;
+  }
+  .cp-cell.highlight { color: var(--text); font-weight: 600; }
+  .val-pos { color: var(--green) !important; }
+  .val-neg { color: var(--red) !important; }
+
+  /* Meteora SVG logo inline */
+  .m-svg { width: 12px; height: 12px; }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)} }
+  .wallet-card { animation: fadeIn 0.25s ease both; }
+  .wallet-card:nth-child(1){animation-delay:0.04s}
+  .wallet-card:nth-child(2){animation-delay:0.08s}
+  .wallet-card:nth-child(3){animation-delay:0.12s}
+  .wallet-card:nth-child(4){animation-delay:0.16s}
+  .wallet-card:nth-child(5){animation-delay:0.20s}
+  .wallet-card:nth-child(6){animation-delay:0.24s}
+
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:var(--surface)}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+  /* MANAGE BUTTON */
+  .nav-manage-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    color: var(--text2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    cursor: pointer; letter-spacing: 0.3px;
+    transition: all 0.15s;
+  }
+  .nav-manage-btn:hover { color: var(--text); border-color: var(--green)66; background: var(--green-dim); }
+  .nav-manage-btn.active { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+
+  /* DRAWER OVERLAY */
+  .drawer-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .drawer-overlay.open { opacity: 1; pointer-events: all; }
+
+  /* DRAWER PANEL */
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 420px; z-index: 201;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: -8px 0 40px rgba(0,0,0,0.5);
+  }
+  .drawer.open { transform: translateX(0); }
+
+  .drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface3);
+    flex-shrink: 0;
+  }
+  .drawer-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 700;
+    color: var(--text); letter-spacing: -0.3px;
+  }
+  .drawer-title span { color: var(--green); }
+  .drawer-close {
+    width: 28px; height: 28px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text2);
+    font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s;
+  }
+  .drawer-close:hover { color: var(--text); border-color: var(--border2); }
+
+  /* ADD WALLET FORM */
+  .drawer-add {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg);
+  }
+  .drawer-add-label {
+    font-size: 9px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .drawer-input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .drawer-input {
+    flex: 1; padding: 8px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .drawer-input:focus { border-color: var(--green)66; }
+  .drawer-input::placeholder { color: var(--text3); }
+  .drawer-add-btn {
+    padding: 8px 14px;
+    background: var(--green-dim);
+    border: 1px solid var(--green)55;
+    border-radius: 5px;
+    color: var(--green); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .drawer-add-btn:hover { background: var(--green)22; border-color: var(--green); }
+  .drawer-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .drawer-import-btn {
+    width: 100%; padding: 7px;
+    background: none; border: 1px dashed var(--border2);
+    border-radius: 5px; color: var(--text3);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    cursor: pointer; transition: all 0.15s; letter-spacing: 0.3px;
+  }
+  .drawer-import-btn:hover { color: var(--text2); border-color: var(--border2); background: var(--surface2); }
+
+  /* WALLET LIST */
+  .drawer-list {
+    flex: 1; overflow-y: auto;
+    padding: 12px 20px;
+  }
+  .drawer-list-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .drawer-list-label {
+    font-size: 9px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .drawer-count {
+    font-size: 10px; color: var(--text2);
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 1px 7px; border-radius: 10px;
+  }
+
+  .wallet-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; margin-bottom: 6px;
+    transition: border-color 0.15s;
+    animation: slideIn 0.18s ease;
+  }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+  .wallet-item:hover { border-color: var(--border2); }
+  .wallet-item-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); flex-shrink: 0;
+    box-shadow: 0 0 5px var(--green)88;
+  }
+  .wallet-item-info { flex: 1; min-width: 0; }
+  .wallet-item-name {
+    font-size: 11px; font-weight: 600; color: var(--text);
+    margin-bottom: 2px; cursor: pointer;
+  }
+  .wallet-item-name:hover { color: var(--green); }
+  .wallet-item-name-input {
+    background: none; border: none; border-bottom: 1px solid var(--green)55;
+    color: var(--green); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600; outline: none;
+    width: 100%; padding: 0 0 1px;
+  }
+  .wallet-item-addr {
+    font-size: 10px; color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .wallet-item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .wi-btn {
+    width: 24px; height: 24px;
+    background: none; border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text3);
+    font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s;
+  }
+  .wi-btn:hover { color: var(--text2); border-color: var(--border2); }
+  .wi-btn.del:hover { color: var(--red); border-color: var(--red)55; background: var(--red-dim); }
+
+  /* DRAWER FOOTER */
+  .drawer-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+    display: flex; gap: 8px;
+  }
+  .drawer-footer-btn {
+    flex: 1; padding: 9px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text2);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    cursor: pointer; transition: all 0.15s; letter-spacing: 0.3px;
+    font-weight: 600;
+  }
+  .drawer-footer-btn:hover { color: var(--text); border-color: var(--border2); }
+  .drawer-footer-btn.export { color: var(--blue); border-color: var(--blue)33; }
+  .drawer-footer-btn.export:hover { background: var(--blue-dim); border-color: var(--blue)66; }
+  .drawer-footer-btn.clear { color: var(--red); border-color: var(--red)33; }
+  .drawer-footer-btn.clear:hover { background: var(--red-dim); border-color: var(--red)66; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 300;
+    padding: 10px 16px; border-radius: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+    background: var(--surface3); border: 1px solid var(--border2);
+    color: var(--text);
+    transform: translateY(8px); opacity: 0;
+    transition: all 0.2s; pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { color: var(--green); border-color: var(--green)44; background: var(--green-dim); }
+  .toast.error { color: var(--red); border-color: var(--red)44; background: var(--red-dim); }
+
+  .drawer-empty {
+    text-align: center; padding: 40px 20px;
+    color: var(--text3); font-size: 11px; line-height: 1.8;
+  }
+  .drawer-empty-icon { font-size: 28px; margin-bottom: 10px; opacity: 0.4; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-brand">
+    <div class="nav-brand-icon">◈</div>
+    LP TRACKER
+  </div>
+  <div class="nav-sep"></div>
+  <div class="nav-info">NETWORK <span>SOLANA</span></div>
+  <div class="nav-sep"></div>
+  <div class="nav-info">PROTOCOL <span>METEORA DLMM</span></div>
+  <div class="nav-right">
+    <div class="nav-stat"><div class="nav-stat-val" style="color:var(--green)">$142,830</div><div class="nav-stat-label">Total Value</div></div>
+    <div class="nav-sep"></div>
+    <div class="nav-stat"><div class="nav-stat-val" style="color:var(--green)">+$8,241</div><div class="nav-stat-label">P&L</div></div>
+    <div class="nav-sep"></div>
+    <div class="nav-stat"><div class="nav-stat-val">6</div><div class="nav-stat-label">Wallets</div></div>
+    <div class="nav-sep"></div>
+    <div class="pulse-dot"></div>
+    <button class="nav-manage-btn" id="manageBtn" onclick="toggleDrawer()">⊞ Manage Wallets</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="cards-grid">
+
+    <!-- CARD 1 -->
+    <div class="wallet-card">
+      <div class="card-header">
+        <div class="card-addr-row">
+          <div class="card-addr">3xK9…mR2f</div>
+          <button class="card-copy" onclick="copyAddr(this,'3xK9mR2f')">copy</button>
+        </div>
+        <div class="card-totals">
+          <div class="card-total-val">$28,450</div>
+          <div class="card-pnl val-pos">+$1,820</div>
+        </div>
+      </div>
+      <div class="card-col-headers">
+        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
+        <div class="cc-h">Value</div>
+        <div class="cc-h">P&L</div>
+        <div class="cc-h">Fees</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left">
+          <div class="cp-pair">SOL/USDC</div><div class="cp-range">142.5 – 195.0 <span class="cp-range-token">USDC</span></div>
+          <div class="cp-meta">
+            <span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span>
+            <a class="meteora-link" href="https://app.meteora.ag/dlmm/4zmmFhKsQoNGkN7BxEGFRqC4kGF7E9gswUNiW2Rg3Jvg" target="_blank">
+              <svg class="m-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>
+              <span class="meteora-link-text">Pool</span>
+            </a>
+          </div>
+        </div>
+        <div class="cp-cell highlight">$8,200</div>
+        <div class="cp-cell val-pos">+$540</div>
+        <div class="cp-cell" style="color:var(--blue)">$88</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left">
+          <div class="cp-pair">SOL/USDT</div><div class="cp-range">140.0 – 200.0 <span class="cp-range-token">USDT</span></div>
+          <div class="cp-meta">
+            <span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span>
+            <a class="meteora-link" href="https://app.meteora.ag/dlmm/3dW9FhkrQGaJkdcJdY7yFjQaXMhiJLNhc2TrA8sXY4Qr" target="_blank">
+              <svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>
+              <span class="meteora-link-text">Pool</span>
+            </a>
+          </div>
+        </div>
+        <div class="cp-cell highlight">$6,100</div>
+        <div class="cp-cell val-pos">+$310</div>
+        <div class="cp-cell" style="color:var(--blue)">$74</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left">
+          <div class="cp-pair">JUP/SOL</div><div class="cp-range">0.0120 – 0.0180 <span class="cp-range-token">SOL</span></div>
+          <div class="cp-meta">
+            <span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span>
+            <a class="meteora-link" href="https://app.meteora.ag/dlmm/7aFm9KpNQmW2RnJcLhYdX5VxEqP3T8sGjBkZr6Yw1Uv" target="_blank">
+              <svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>
+              <span class="meteora-link-text">Pool</span>
+            </a>
+          </div>
+        </div>
+        <div class="cp-cell highlight">$5,400</div>
+        <div class="cp-cell val-pos">+$620</div>
+        <div class="cp-cell" style="color:var(--blue)">$91</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left">
+          <div class="cp-pair">BONK/SOL</div><div class="cp-range">0.0000088 – 0.000012 <span class="cp-range-token">SOL</span></div>
+          <div class="cp-meta">
+            <span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span>
+            <a class="meteora-link" href="https://app.meteora.ag/dlmm/2sQpW7mKjNxR4LhVcFdT9YgEaB6ZoJnPkXtU3Mv8Rs1" target="_blank">
+              <svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>
+              <span class="meteora-link-text">Pool</span>
+            </a>
+          </div>
+        </div>
+        <div class="cp-cell highlight">$4,800</div>
+        <div class="cp-cell val-neg">-$180</div>
+        <div class="cp-cell" style="color:var(--blue)">$38</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left">
+          <div class="cp-pair">WIF/USDC</div><div class="cp-range">1.82 – 2.64 <span class="cp-range-token">USDC</span></div>
+          <div class="cp-meta">
+            <span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span>
+            <a class="meteora-link" href="https://app.meteora.ag/dlmm/9bKnF3pQmW8RxLcYdH2TgVjE5sP7NaZo4JtUr1Mv6Ws" target="_blank">
+              <svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>
+              <span class="meteora-link-text">Pool</span>
+            </a>
+          </div>
+        </div>
+        <div class="cp-cell highlight">$3,950</div>
+        <div class="cp-cell val-pos">+$530</div>
+        <div class="cp-cell" style="color:var(--blue)">$21</div>
+      </div>
+    </div>
+
+    <!-- CARD 2 -->
+    <div class="wallet-card">
+      <div class="card-header">
+        <div class="card-addr-row">
+          <div class="card-addr">7mN4…pQ8t</div>
+          <button class="card-copy" onclick="copyAddr(this,'7mN4pQ8t')">copy</button>
+        </div>
+        <div class="card-totals">
+          <div class="card-total-val">$31,200</div>
+          <div class="card-pnl val-pos">+$2,140</div>
+        </div>
+      </div>
+      <div class="card-col-headers">
+        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
+        <div class="cc-h">Value</div><div class="cc-h">P&L</div><div class="cc-h">Fees</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">SOL/USDC</div><div class="cp-range">142.5 – 195.0 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/4zmmFhKsQoNGkN7BxEGFRqC4kGF7E9gswUNiW2Rg3Jvg" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$10,500</div><div class="cp-cell val-pos">+$880</div><div class="cp-cell" style="color:var(--blue)">$102</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">PYTH/USDC</div><div class="cp-range">0.31 – 0.48 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/5pNm8KrQjWx3LhYcFdT6VgEa2ZoJnBkXtU9Mv4Rs7Pq" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$7,200</div><div class="cp-cell val-pos">+$420</div><div class="cp-cell" style="color:var(--blue)">$58</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">RNDR/SOL</div><div class="cp-range">0.041 – 0.062 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/6qLn9JsRkYx4MhZdG7TfWbE3aPoKnCjXtV2Nu5St8Qr" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$5,800</div><div class="cp-cell val-neg">-$310</div><div class="cp-cell" style="color:var(--blue)">$44</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">JTO/USDC</div><div class="cp-range">2.10 – 3.40 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/7rMo0KtSkZy5NiAeH8UgXcF4bQpLoDkYuW3Ov6Tu9Rs" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$4,700</div><div class="cp-cell val-pos">+$790</div><div class="cp-cell" style="color:var(--blue)">$27</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">POPCAT/SOL</div><div class="cp-range">0.0088 – 0.0140 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/8sNp1LuTlAz6OjBfI9VhYdG5cRqMpEkZvX4Pw7Uv0St" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$3,000</div><div class="cp-cell val-pos">+$360</div><div class="cp-cell" style="color:var(--blue)">$10</div>
+      </div>
+    </div>
+
+    <!-- CARD 3 -->
+    <div class="wallet-card">
+      <div class="card-header">
+        <div class="card-addr-row">
+          <div class="card-addr">9aB2…kL5w</div>
+          <button class="card-copy" onclick="copyAddr(this,'9aB2kL5w')">copy</button>
+        </div>
+        <div class="card-totals">
+          <div class="card-total-val">$19,600</div>
+          <div class="card-pnl val-neg">-$430</div>
+        </div>
+      </div>
+      <div class="card-col-headers">
+        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
+        <div class="cc-h">Value</div><div class="cc-h">P&L</div><div class="cc-h">Fees</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">SOL/USDC</div><div class="cp-range">142.5 – 195.0 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/4zmmFhKsQoNGkN7BxEGFRqC4kGF7E9gswUNiW2Rg3Jvg" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$6,200</div><div class="cp-cell val-neg">-$240</div><div class="cp-cell" style="color:var(--blue)">$66</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">MSOL/SOL</div><div class="cp-range">0.9920 – 1.0080 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/9tOq2MvUmBa7PkCgJ0WhZeH6dSrNqFlAwY5Qx8Vw1Tu" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$4,800</div><div class="cp-cell val-pos">+$120</div><div class="cp-cell" style="color:var(--blue)">$52</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">BSOL/SOL</div><div class="cp-range">0.9930 – 1.0090 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/0uPr3NwVnCb8QlDhK1XiAfI7eTsOrGmBxZ6Ry9Wx2Uv" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$3,900</div><div class="cp-cell val-pos">+$88</div><div class="cp-cell" style="color:var(--blue)">$32</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">WIF/USDC</div><div class="cp-range">1.82 – 2.64 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/1vQs4OxWoDc9RmEiL2YjBgJ8fUsSqHnCyA7Sz0Xy3Vw" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$2,800</div><div class="cp-cell val-neg">-$340</div><div class="cp-cell" style="color:var(--blue)">$18</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">JUP/USDC</div><div class="cp-range">0.72 – 1.10 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/2wRt5PyXpEd0SnFjM3ZkChK9gVtTrIoDzB8Ta1Yz4Wx" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$1,900</div><div class="cp-cell val-neg">-$58</div><div class="cp-cell" style="color:var(--blue)">$10</div>
+      </div>
+    </div>
+
+    <!-- CARD 4 -->
+    <div class="wallet-card">
+      <div class="card-header">
+        <div class="card-addr-row">
+          <div class="card-addr">5cD8…nH1v</div>
+          <button class="card-copy" onclick="copyAddr(this,'5cD8nH1v')">copy</button>
+        </div>
+        <div class="card-totals">
+          <div class="card-total-val">$24,100</div>
+          <div class="card-pnl val-pos">+$1,340</div>
+        </div>
+      </div>
+      <div class="card-col-headers">
+        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
+        <div class="cc-h">Value</div><div class="cc-h">P&L</div><div class="cc-h">Fees</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">SOL/USDC</div><div class="cp-range">142.5 – 195.0 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/4zmmFhKsQoNGkN7BxEGFRqC4kGF7E9gswUNiW2Rg3Jvg" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$9,100</div><div class="cp-cell val-pos">+$620</div><div class="cp-cell" style="color:var(--blue)">$88</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">BONK/USDC</div><div class="cp-range">0.000018 – 0.000028 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/3xSu6QyYqFe1ToGkN4AlDiL0hWuUsJpEaC9Ub2Za5Xy" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$5,200</div><div class="cp-cell val-pos">+$440</div><div class="cp-cell" style="color:var(--blue)">$54</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">WEN/SOL</div><div class="cp-range">0.000041 – 0.000068 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/4yTv7RzZrGf2UpHlO5BmEjM1iXvVtKqFbD0Vc3Ab6Yz" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$4,100</div><div class="cp-cell val-neg">-$180</div><div class="cp-cell" style="color:var(--blue)">$28</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">RAY/USDC</div><div class="cp-range">2.20 – 3.80 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/5zUw8SaArHg3VqImP6CnFkN2jYwWuLrGcE1Wd4Bc7Za" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$3,400</div><div class="cp-cell val-pos">+$310</div><div class="cp-cell" style="color:var(--blue)">$18</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">PYTH/SOL</div><div class="cp-range">0.0018 – 0.0029 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/6aVx9TbBsIh4WrJnQ7DoGlO3kZxXvMsHdF2Xe5Cd8Ab" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$2,300</div><div class="cp-cell val-pos">+$150</div><div class="cp-cell" style="color:var(--blue)">$10</div>
+      </div>
+    </div>
+
+    <!-- CARD 5 -->
+    <div class="wallet-card">
+      <div class="card-header">
+        <div class="card-addr-row">
+          <div class="card-addr">2eF7…jG4x</div>
+          <button class="card-copy" onclick="copyAddr(this,'2eF7jG4x')">copy</button>
+        </div>
+        <div class="card-totals">
+          <div class="card-total-val">$22,480</div>
+          <div class="card-pnl val-pos">+$2,890</div>
+        </div>
+      </div>
+      <div class="card-col-headers">
+        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
+        <div class="cc-h">Value</div><div class="cc-h">P&L</div><div class="cc-h">Fees</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">SOL/USDT</div><div class="cp-range">140.0 – 200.0 <span class="cp-range-token">USDT</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/3dW9FhkrQGaJkdcJdY7yFjQaXMhiJLNhc2TrA8sXY4Qr" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$7,800</div><div class="cp-cell val-pos">+$1,100</div><div class="cp-cell" style="color:var(--blue)">$70</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">JUP/USDC</div><div class="cp-range">0.72 – 1.10 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/2wRt5PyXpEd0SnFjM3ZkChK9gVtTrIoDzB8Ta1Yz4Wx" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$5,600</div><div class="cp-cell val-pos">+$840</div><div class="cp-cell" style="color:var(--blue)">$44</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">POPCAT/USDC</div><div class="cp-range">0.62 – 0.98 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/8sNp1LuTlAz6OjBfI9VhYdG5cRqMpEkZvX4Pw7Uv0St" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$4,200</div><div class="cp-cell val-pos">+$620</div><div class="cp-cell" style="color:var(--blue)">$30</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">MSOL/USDC</div><div class="cp-range">168.0 – 200.0 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/9tOq2MvUmBa7PkCgJ0WhZeH6dSrNqFlAwY5Qx8Vw1Tu" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$3,100</div><div class="cp-cell val-pos">+$210</div><div class="cp-cell" style="color:var(--blue)">$12</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">WIF/SOL</div><div class="cp-range">0.0120 – 0.0180 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/9bKnF3pQmW8RxLcYdH2TgVjE5sP7NaZo4JtUr1Mv6Ws" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$1,780</div><div class="cp-cell val-pos">+$120</div><div class="cp-cell" style="color:var(--blue)">$6</div>
+      </div>
+    </div>
+
+    <!-- CARD 6 -->
+    <div class="wallet-card">
+      <div class="card-header">
+        <div class="card-addr-row">
+          <div class="card-addr">8hJ3…qW9z</div>
+          <button class="card-copy" onclick="copyAddr(this,'8hJ3qW9z')">copy</button>
+        </div>
+        <div class="card-totals">
+          <div class="card-total-val">$17,000</div>
+          <div class="card-pnl val-pos">+$481</div>
+        </div>
+      </div>
+      <div class="card-col-headers">
+        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
+        <div class="cc-h">Value</div><div class="cc-h">P&L</div><div class="cc-h">Fees</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">SOL/USDC</div><div class="cp-range">142.5 – 195.0 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/4zmmFhKsQoNGkN7BxEGFRqC4kGF7E9gswUNiW2Rg3Jvg" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$6,400</div><div class="cp-cell val-pos">+$320</div><div class="cp-cell" style="color:var(--blue)">$52</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">ORCA/USDC</div><div class="cp-range">2.40 – 3.60 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/7bWy4QcCuJi5XsKoP8EnGmR3lAtBvHdF6Ye9De2Cf5Bc" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$3,800</div><div class="cp-cell val-neg">-$120</div><div class="cp-cell" style="color:var(--blue)">$28</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">BSOL/SOL</div><div class="cp-range">0.9930 – 1.0090 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/0uPr3NwVnCb8QlDhK1XiAfI7eTsOrGmBxZ6Ry9Wx2Uv" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$2,800</div><div class="cp-cell val-pos">+$88</div><div class="cp-cell" style="color:var(--blue)">$18</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">BONK/SOL</div><div class="cp-range">0.0000088 – 0.000012 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/2sQpW7mKjNxR4LhVcFdT9YgEaB6ZoJnPkXtU3Mv8Rs1" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$2,200</div><div class="cp-cell val-pos">+$280</div><div class="cp-cell" style="color:var(--blue)">$10</div>
+      </div>
+      <div class="card-pos-row">
+        <div class="cp-left"><div class="cp-pair">ZEUS/USDC</div><div class="cp-range">0.52 – 0.88 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/8cXz5RdDvKj6YtLoQ9FnHpS4mBuCwIeG3Za2Af7Bd0Cb" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
+        <div class="cp-cell highlight">$1,800</div><div class="cp-cell val-neg">-$87</div><div class="cp-cell" style="color:var(--blue)">$4</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- DRAWER OVERLAY -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+
+<!-- WALLET MANAGER DRAWER -->
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-title">Wallet <span>Manager</span></div>
+    <button class="drawer-close" onclick="toggleDrawer()">✕</button>
+  </div>
+
+  <div class="drawer-add">
+    <div class="drawer-add-label">Add Wallet</div>
+    <div class="drawer-input-row">
+      <input class="drawer-input" id="addrInput" placeholder="Solana wallet address..." maxlength="44" oninput="validateInput()" />
+      <button class="drawer-add-btn" id="addBtn" onclick="addWallet()" disabled>+ Add</button>
+    </div>
+    <div class="drawer-input-row" style="margin-bottom:0">
+      <input class="drawer-input" id="labelInput" placeholder="Label (optional, e.g. Main wallet)" />
+    </div>
+    <div style="margin-top:8px">
+      <button class="drawer-import-btn" onclick="document.getElementById('fileInput').click()">⬆ Import list from .txt file (one address per line)</button>
+      <input type="file" id="fileInput" accept=".txt" style="display:none" onchange="importFromFile(event)" />
+    </div>
+  </div>
+
+  <div class="drawer-list" id="drawerList">
+    <div class="drawer-list-header">
+      <div class="drawer-list-label">Tracked Wallets</div>
+      <div class="drawer-count" id="walletCount">0</div>
+    </div>
+    <div id="walletItems"></div>
+  </div>
+
+  <div class="drawer-footer">
+    <button class="drawer-footer-btn export" onclick="exportWallets()">⬇ Export .txt</button>
+    <button class="drawer-footer-btn" onclick="copyAllAddrs()">⎘ Copy All</button>
+    <button class="drawer-footer-btn clear" onclick="clearAllWallets()">✕ Clear All</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── WALLET MANAGER ───────────────────────────────────────────────
+
+const STORAGE_KEY = 'lp_tracker_wallets';
+
+function loadWallets() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveWallets(wallets) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(wallets));
+}
+
+function getWallets() { return loadWallets(); }
+
+// Validate Solana address (base58, 32-44 chars)
+function isValidSolanaAddr(addr) {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr.trim());
+}
+
+function validateInput() {
+  const val = document.getElementById('addrInput').value.trim();
+  document.getElementById('addBtn').disabled = !isValidSolanaAddr(val);
+}
+
+function addWallet(addr, label) {
+  const wallets = loadWallets();
+  const address = (addr || document.getElementById('addrInput').value).trim();
+  const name = (label || document.getElementById('labelInput').value).trim()
+    || `Wallet ${wallets.length + 1}`;
+
+  if (!isValidSolanaAddr(address)) { showToast('Invalid Solana address', 'error'); return; }
+  if (wallets.find(w => w.address === address)) { showToast('Address already tracked', 'error'); return; }
+
+  wallets.push({ address, name, addedAt: Date.now() });
+  saveWallets(wallets);
+  renderWalletList();
+
+  // Clear inputs
+  if (!addr) {
+    document.getElementById('addrInput').value = '';
+    document.getElementById('labelInput').value = '';
+    document.getElementById('addBtn').disabled = true;
+  }
+
+  showToast(`Added: ${name}`, 'success');
+}
+
+function removeWallet(address) {
+  const wallets = loadWallets().filter(w => w.address !== address);
+  saveWallets(wallets);
+  renderWalletList();
+  showToast('Wallet removed', '');
+}
+
+function startRename(address) {
+  const wallets = loadWallets();
+  const w = wallets.find(w => w.address === address);
+  const nameEl = document.getElementById('name_' + address);
+  if (!nameEl) return;
+  const input = document.createElement('input');
+  input.className = 'wallet-item-name-input';
+  input.value = w.name;
+  input.onblur = () => finishRename(address, input.value);
+  input.onkeydown = e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { renderWalletList(); } };
+  nameEl.replaceWith(input);
+  input.focus(); input.select();
+}
+
+function finishRename(address, newName) {
+  const wallets = loadWallets();
+  const w = wallets.find(w => w.address === address);
+  if (w && newName.trim()) { w.name = newName.trim(); saveWallets(wallets); }
+  renderWalletList();
+}
+
+function copyAddr(btn, addr) {
+  navigator.clipboard.writeText(addr).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'copied!';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 1500);
+  });
+}
+
+function copyWalletAddr(address) {
+  navigator.clipboard.writeText(address).then(() => showToast('Address copied', 'success'));
+}
+
+function copyAllAddrs() {
+  const wallets = loadWallets();
+  if (!wallets.length) { showToast('No wallets to copy', 'error'); return; }
+  navigator.clipboard.writeText(wallets.map(w => w.address).join('\n'))
+    .then(() => showToast(`Copied ${wallets.length} addresses`, 'success'));
+}
+
+function exportWallets() {
+  const wallets = loadWallets();
+  if (!wallets.length) { showToast('No wallets to export', 'error'); return; }
+  const content = wallets.map(w => `${w.address}${w.name ? '  # ' + w.name : ''}`).join('\n');
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = 'lp_tracker_wallets.txt'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Exported!', 'success');
+}
+
+function importFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').map(l => l.trim()).filter(Boolean);
+    let added = 0, skipped = 0;
+    lines.forEach(line => {
+      // Support "address  # label" format
+      const [rawAddr, ...rest] = line.split('#');
+      const addr = rawAddr.trim();
+      const label = rest.join('#').trim();
+      if (isValidSolanaAddr(addr)) {
+        const wallets = loadWallets();
+        if (!wallets.find(w => w.address === addr)) {
+          addWallet(addr, label || '');
+          added++;
+        } else { skipped++; }
+      } else { skipped++; }
+    });
+    showToast(`Imported ${added} wallets${skipped ? `, ${skipped} skipped` : ''}`, 'success');
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function clearAllWallets() {
+  if (!confirm('Remove all tracked wallets?')) return;
+  saveWallets([]);
+  renderWalletList();
+  showToast('All wallets cleared', '');
+}
+
+function renderWalletList() {
+  const wallets = loadWallets();
+  const container = document.getElementById('walletItems');
+  const countEl = document.getElementById('walletCount');
+  countEl.textContent = wallets.length;
+
+  if (!wallets.length) {
+    container.innerHTML = `
+      <div class="drawer-empty">
+        <div class="drawer-empty-icon">◈</div>
+        No wallets tracked yet.<br>
+        Paste a Solana address above<br>to start tracking.
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = wallets.map((w, i) => {
+    const short = w.address.slice(0, 4) + '…' + w.address.slice(-4);
+    const added = new Date(w.addedAt).toLocaleDateString();
+    return `
+    <div class="wallet-item" id="wi_${w.address}">
+      <div class="wallet-item-dot"></div>
+      <div class="wallet-item-info">
+        <div class="wallet-item-name" id="name_${w.address}" onclick="startRename('${w.address}')" title="Click to rename">${w.name}</div>
+        <div class="wallet-item-addr" title="${w.address}">${short} · added ${added}</div>
+      </div>
+      <div class="wallet-item-actions">
+        <button class="wi-btn" onclick="copyWalletAddr('${w.address}')" title="Copy address">⎘</button>
+        <button class="wi-btn del" onclick="removeWallet('${w.address}')" title="Remove">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── DRAWER TOGGLE ────────────────────────────────────────────────
+
+function toggleDrawer() {
+  const drawer = document.getElementById('drawer');
+  const overlay = document.getElementById('drawerOverlay');
+  const btn = document.getElementById('manageBtn');
+  const isOpen = drawer.classList.contains('open');
+  drawer.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  btn.classList.toggle('active', !isOpen);
+  if (!isOpen) renderWalletList();
+}
+
+// Close drawer on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('drawer').classList.contains('open')) toggleDrawer();
+});
+
+// ─── TOAST ────────────────────────────────────────────────────────
+
+let toastTimer;
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 2200);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────
+renderWalletList();
+</script>
+</body>
+</html>
