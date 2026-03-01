@@ -475,306 +475,26 @@
   <div class="nav-sep"></div>
   <div class="nav-info">PROTOCOL <span>METEORA DLMM</span></div>
   <div class="nav-right">
-    <div class="nav-stat"><div class="nav-stat-val" style="color:var(--green)">$142,830</div><div class="nav-stat-label">Total Value</div></div>
+    <div class="nav-stat"><div class="nav-stat-val" id="navTotalVal" style="color:var(--green)">—</div><div class="nav-stat-label">Total Value</div></div>
     <div class="nav-sep"></div>
-    <div class="nav-stat"><div class="nav-stat-val" style="color:var(--green)">+$8,241</div><div class="nav-stat-label">P&L</div></div>
+    <div class="nav-stat"><div class="nav-stat-val" id="navTotalPnl">—</div><div class="nav-stat-label">P&L</div></div>
     <div class="nav-sep"></div>
-    <div class="nav-stat"><div class="nav-stat-val">6</div><div class="nav-stat-label">Wallets</div></div>
+    <div class="nav-stat"><div class="nav-stat-val" id="navWallets">0</div><div class="nav-stat-label">Wallets</div></div>
     <div class="nav-sep"></div>
+    <div class="nav-stat" style="align-items:center;">
+      <div class="nav-stat-val" style="font-size:10px;color:var(--text3)" id="refreshCountdown">—:——</div>
+      <div class="nav-stat-label">Next refresh</div>
+    </div>
+    <div class="nav-sep"></div>
+    <button id="refreshBtn" class="nav-manage-btn" onclick="refreshAll()" style="color:var(--green);border-color:var(--green)44;">↻ Refresh</button>
+    <button class="nav-manage-btn" onclick="openSettings()">⚙ Settings</button>
     <div class="pulse-dot"></div>
     <button class="nav-manage-btn" id="manageBtn" onclick="toggleDrawer()">⊞ Manage Wallets</button>
   </div>
 </div>
 
-<div class="main">
-  <div class="cards-grid">
-
-    <!-- CARD 1 -->
-    <div class="wallet-card">
-      <div class="card-header">
-        <div class="card-addr-row">
-          <div class="card-addr">3xK9…mR2f</div>
-          <button class="card-copy" onclick="copyAddr(this,'3xK9mR2f')">copy</button>
-        </div>
-        <div class="card-totals">
-          <div class="card-total-val">$28,450</div>
-          <div class="card-pnl val-pos">+$1,820</div>
-        </div>
-      </div>
-      <div class="card-col-headers">
-        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
-        <div class="cc-h">Value</div>
-        <div class="cc-h">P&L</div>
-        <div class="cc-h">Fees</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left">
-          <div class="cp-pair">SOL/USDC</div><div class="cp-range">142.5 – 195.0 <span class="cp-range-token">USDC</span></div>
-          <div class="cp-meta">
-            <span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span>
-            <a class="meteora-link" href="https://app.meteora.ag/dlmm/4zmmFhKsQoNGkN7BxEGFRqC4kGF7E9gswUNiW2Rg3Jvg" target="_blank">
-              <svg class="m-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>
-              <span class="meteora-link-text">Pool</span>
-            </a>
-          </div>
-        </div>
-        <div class="cp-cell highlight">$8,200</div>
-        <div class="cp-cell val-pos">+$540</div>
-        <div class="cp-cell" style="color:var(--blue)">$88</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left">
-          <div class="cp-pair">SOL/USDT</div><div class="cp-range">140.0 – 200.0 <span class="cp-range-token">USDT</span></div>
-          <div class="cp-meta">
-            <span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span>
-            <a class="meteora-link" href="https://app.meteora.ag/dlmm/3dW9FhkrQGaJkdcJdY7yFjQaXMhiJLNhc2TrA8sXY4Qr" target="_blank">
-              <svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>
-              <span class="meteora-link-text">Pool</span>
-            </a>
-          </div>
-        </div>
-        <div class="cp-cell highlight">$6,100</div>
-        <div class="cp-cell val-pos">+$310</div>
-        <div class="cp-cell" style="color:var(--blue)">$74</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left">
-          <div class="cp-pair">JUP/SOL</div><div class="cp-range">0.0120 – 0.0180 <span class="cp-range-token">SOL</span></div>
-          <div class="cp-meta">
-            <span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span>
-            <a class="meteora-link" href="https://app.meteora.ag/dlmm/7aFm9KpNQmW2RnJcLhYdX5VxEqP3T8sGjBkZr6Yw1Uv" target="_blank">
-              <svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>
-              <span class="meteora-link-text">Pool</span>
-            </a>
-          </div>
-        </div>
-        <div class="cp-cell highlight">$5,400</div>
-        <div class="cp-cell val-pos">+$620</div>
-        <div class="cp-cell" style="color:var(--blue)">$91</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left">
-          <div class="cp-pair">BONK/SOL</div><div class="cp-range">0.0000088 – 0.000012 <span class="cp-range-token">SOL</span></div>
-          <div class="cp-meta">
-            <span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span>
-            <a class="meteora-link" href="https://app.meteora.ag/dlmm/2sQpW7mKjNxR4LhVcFdT9YgEaB6ZoJnPkXtU3Mv8Rs1" target="_blank">
-              <svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>
-              <span class="meteora-link-text">Pool</span>
-            </a>
-          </div>
-        </div>
-        <div class="cp-cell highlight">$4,800</div>
-        <div class="cp-cell val-neg">-$180</div>
-        <div class="cp-cell" style="color:var(--blue)">$38</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left">
-          <div class="cp-pair">WIF/USDC</div><div class="cp-range">1.82 – 2.64 <span class="cp-range-token">USDC</span></div>
-          <div class="cp-meta">
-            <span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span>
-            <a class="meteora-link" href="https://app.meteora.ag/dlmm/9bKnF3pQmW8RxLcYdH2TgVjE5sP7NaZo4JtUr1Mv6Ws" target="_blank">
-              <svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>
-              <span class="meteora-link-text">Pool</span>
-            </a>
-          </div>
-        </div>
-        <div class="cp-cell highlight">$3,950</div>
-        <div class="cp-cell val-pos">+$530</div>
-        <div class="cp-cell" style="color:var(--blue)">$21</div>
-      </div>
-    </div>
-
-    <!-- CARD 2 -->
-    <div class="wallet-card">
-      <div class="card-header">
-        <div class="card-addr-row">
-          <div class="card-addr">7mN4…pQ8t</div>
-          <button class="card-copy" onclick="copyAddr(this,'7mN4pQ8t')">copy</button>
-        </div>
-        <div class="card-totals">
-          <div class="card-total-val">$31,200</div>
-          <div class="card-pnl val-pos">+$2,140</div>
-        </div>
-      </div>
-      <div class="card-col-headers">
-        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
-        <div class="cc-h">Value</div><div class="cc-h">P&L</div><div class="cc-h">Fees</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">SOL/USDC</div><div class="cp-range">142.5 – 195.0 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/4zmmFhKsQoNGkN7BxEGFRqC4kGF7E9gswUNiW2Rg3Jvg" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$10,500</div><div class="cp-cell val-pos">+$880</div><div class="cp-cell" style="color:var(--blue)">$102</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">PYTH/USDC</div><div class="cp-range">0.31 – 0.48 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/5pNm8KrQjWx3LhYcFdT6VgEa2ZoJnBkXtU9Mv4Rs7Pq" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$7,200</div><div class="cp-cell val-pos">+$420</div><div class="cp-cell" style="color:var(--blue)">$58</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">RNDR/SOL</div><div class="cp-range">0.041 – 0.062 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/6qLn9JsRkYx4MhZdG7TfWbE3aPoKnCjXtV2Nu5St8Qr" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$5,800</div><div class="cp-cell val-neg">-$310</div><div class="cp-cell" style="color:var(--blue)">$44</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">JTO/USDC</div><div class="cp-range">2.10 – 3.40 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/7rMo0KtSkZy5NiAeH8UgXcF4bQpLoDkYuW3Ov6Tu9Rs" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$4,700</div><div class="cp-cell val-pos">+$790</div><div class="cp-cell" style="color:var(--blue)">$27</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">POPCAT/SOL</div><div class="cp-range">0.0088 – 0.0140 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/8sNp1LuTlAz6OjBfI9VhYdG5cRqMpEkZvX4Pw7Uv0St" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$3,000</div><div class="cp-cell val-pos">+$360</div><div class="cp-cell" style="color:var(--blue)">$10</div>
-      </div>
-    </div>
-
-    <!-- CARD 3 -->
-    <div class="wallet-card">
-      <div class="card-header">
-        <div class="card-addr-row">
-          <div class="card-addr">9aB2…kL5w</div>
-          <button class="card-copy" onclick="copyAddr(this,'9aB2kL5w')">copy</button>
-        </div>
-        <div class="card-totals">
-          <div class="card-total-val">$19,600</div>
-          <div class="card-pnl val-neg">-$430</div>
-        </div>
-      </div>
-      <div class="card-col-headers">
-        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
-        <div class="cc-h">Value</div><div class="cc-h">P&L</div><div class="cc-h">Fees</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">SOL/USDC</div><div class="cp-range">142.5 – 195.0 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/4zmmFhKsQoNGkN7BxEGFRqC4kGF7E9gswUNiW2Rg3Jvg" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$6,200</div><div class="cp-cell val-neg">-$240</div><div class="cp-cell" style="color:var(--blue)">$66</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">MSOL/SOL</div><div class="cp-range">0.9920 – 1.0080 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/9tOq2MvUmBa7PkCgJ0WhZeH6dSrNqFlAwY5Qx8Vw1Tu" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$4,800</div><div class="cp-cell val-pos">+$120</div><div class="cp-cell" style="color:var(--blue)">$52</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">BSOL/SOL</div><div class="cp-range">0.9930 – 1.0090 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/0uPr3NwVnCb8QlDhK1XiAfI7eTsOrGmBxZ6Ry9Wx2Uv" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$3,900</div><div class="cp-cell val-pos">+$88</div><div class="cp-cell" style="color:var(--blue)">$32</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">WIF/USDC</div><div class="cp-range">1.82 – 2.64 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/1vQs4OxWoDc9RmEiL2YjBgJ8fUsSqHnCyA7Sz0Xy3Vw" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$2,800</div><div class="cp-cell val-neg">-$340</div><div class="cp-cell" style="color:var(--blue)">$18</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">JUP/USDC</div><div class="cp-range">0.72 – 1.10 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/2wRt5PyXpEd0SnFjM3ZkChK9gVtTrIoDzB8Ta1Yz4Wx" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$1,900</div><div class="cp-cell val-neg">-$58</div><div class="cp-cell" style="color:var(--blue)">$10</div>
-      </div>
-    </div>
-
-    <!-- CARD 4 -->
-    <div class="wallet-card">
-      <div class="card-header">
-        <div class="card-addr-row">
-          <div class="card-addr">5cD8…nH1v</div>
-          <button class="card-copy" onclick="copyAddr(this,'5cD8nH1v')">copy</button>
-        </div>
-        <div class="card-totals">
-          <div class="card-total-val">$24,100</div>
-          <div class="card-pnl val-pos">+$1,340</div>
-        </div>
-      </div>
-      <div class="card-col-headers">
-        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
-        <div class="cc-h">Value</div><div class="cc-h">P&L</div><div class="cc-h">Fees</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">SOL/USDC</div><div class="cp-range">142.5 – 195.0 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/4zmmFhKsQoNGkN7BxEGFRqC4kGF7E9gswUNiW2Rg3Jvg" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$9,100</div><div class="cp-cell val-pos">+$620</div><div class="cp-cell" style="color:var(--blue)">$88</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">BONK/USDC</div><div class="cp-range">0.000018 – 0.000028 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/3xSu6QyYqFe1ToGkN4AlDiL0hWuUsJpEaC9Ub2Za5Xy" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$5,200</div><div class="cp-cell val-pos">+$440</div><div class="cp-cell" style="color:var(--blue)">$54</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">WEN/SOL</div><div class="cp-range">0.000041 – 0.000068 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/4yTv7RzZrGf2UpHlO5BmEjM1iXvVtKqFbD0Vc3Ab6Yz" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$4,100</div><div class="cp-cell val-neg">-$180</div><div class="cp-cell" style="color:var(--blue)">$28</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">RAY/USDC</div><div class="cp-range">2.20 – 3.80 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/5zUw8SaArHg3VqImP6CnFkN2jYwWuLrGcE1Wd4Bc7Za" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$3,400</div><div class="cp-cell val-pos">+$310</div><div class="cp-cell" style="color:var(--blue)">$18</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">PYTH/SOL</div><div class="cp-range">0.0018 – 0.0029 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/6aVx9TbBsIh4WrJnQ7DoGlO3kZxXvMsHdF2Xe5Cd8Ab" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$2,300</div><div class="cp-cell val-pos">+$150</div><div class="cp-cell" style="color:var(--blue)">$10</div>
-      </div>
-    </div>
-
-    <!-- CARD 5 -->
-    <div class="wallet-card">
-      <div class="card-header">
-        <div class="card-addr-row">
-          <div class="card-addr">2eF7…jG4x</div>
-          <button class="card-copy" onclick="copyAddr(this,'2eF7jG4x')">copy</button>
-        </div>
-        <div class="card-totals">
-          <div class="card-total-val">$22,480</div>
-          <div class="card-pnl val-pos">+$2,890</div>
-        </div>
-      </div>
-      <div class="card-col-headers">
-        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
-        <div class="cc-h">Value</div><div class="cc-h">P&L</div><div class="cc-h">Fees</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">SOL/USDT</div><div class="cp-range">140.0 – 200.0 <span class="cp-range-token">USDT</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/3dW9FhkrQGaJkdcJdY7yFjQaXMhiJLNhc2TrA8sXY4Qr" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$7,800</div><div class="cp-cell val-pos">+$1,100</div><div class="cp-cell" style="color:var(--blue)">$70</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">JUP/USDC</div><div class="cp-range">0.72 – 1.10 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/2wRt5PyXpEd0SnFjM3ZkChK9gVtTrIoDzB8Ta1Yz4Wx" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$5,600</div><div class="cp-cell val-pos">+$840</div><div class="cp-cell" style="color:var(--blue)">$44</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">POPCAT/USDC</div><div class="cp-range">0.62 – 0.98 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/8sNp1LuTlAz6OjBfI9VhYdG5cRqMpEkZvX4Pw7Uv0St" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$4,200</div><div class="cp-cell val-pos">+$620</div><div class="cp-cell" style="color:var(--blue)">$30</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">MSOL/USDC</div><div class="cp-range">168.0 – 200.0 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/9tOq2MvUmBa7PkCgJ0WhZeH6dSrNqFlAwY5Qx8Vw1Tu" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$3,100</div><div class="cp-cell val-pos">+$210</div><div class="cp-cell" style="color:var(--blue)">$12</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">WIF/SOL</div><div class="cp-range">0.0120 – 0.0180 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/9bKnF3pQmW8RxLcYdH2TgVjE5sP7NaZo4JtUr1Mv6Ws" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$1,780</div><div class="cp-cell val-pos">+$120</div><div class="cp-cell" style="color:var(--blue)">$6</div>
-      </div>
-    </div>
-
-    <!-- CARD 6 -->
-    <div class="wallet-card">
-      <div class="card-header">
-        <div class="card-addr-row">
-          <div class="card-addr">8hJ3…qW9z</div>
-          <button class="card-copy" onclick="copyAddr(this,'8hJ3qW9z')">copy</button>
-        </div>
-        <div class="card-totals">
-          <div class="card-total-val">$17,000</div>
-          <div class="card-pnl val-pos">+$481</div>
-        </div>
-      </div>
-      <div class="card-col-headers">
-        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
-        <div class="cc-h">Value</div><div class="cc-h">P&L</div><div class="cc-h">Fees</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">SOL/USDC</div><div class="cp-range">142.5 – 195.0 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/4zmmFhKsQoNGkN7BxEGFRqC4kGF7E9gswUNiW2Rg3Jvg" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$6,400</div><div class="cp-cell val-pos">+$320</div><div class="cp-cell" style="color:var(--blue)">$52</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">ORCA/USDC</div><div class="cp-range">2.40 – 3.60 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/7bWy4QcCuJi5XsKoP8EnGmR3lAtBvHdF6Ye9De2Cf5Bc" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$3,800</div><div class="cp-cell val-neg">-$120</div><div class="cp-cell" style="color:var(--blue)">$28</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">BSOL/SOL</div><div class="cp-range">0.9930 – 1.0090 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-spot"><span class="strat-dot"></span>Spot</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/0uPr3NwVnCb8QlDhK1XiAfI7eTsOrGmBxZ6Ry9Wx2Uv" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$2,800</div><div class="cp-cell val-pos">+$88</div><div class="cp-cell" style="color:var(--blue)">$18</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">BONK/SOL</div><div class="cp-range">0.0000088 – 0.000012 <span class="cp-range-token">SOL</span></div><div class="cp-meta"><span class="strategy-tag strat-curve"><span class="strat-dot"></span>Curve</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/2sQpW7mKjNxR4LhVcFdT9YgEaB6ZoJnPkXtU3Mv8Rs1" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$2,200</div><div class="cp-cell val-pos">+$280</div><div class="cp-cell" style="color:var(--blue)">$10</div>
-      </div>
-      <div class="card-pos-row">
-        <div class="cp-left"><div class="cp-pair">ZEUS/USDC</div><div class="cp-range">0.52 – 0.88 <span class="cp-range-token">USDC</span></div><div class="cp-meta"><span class="strategy-tag strat-bidask"><span class="strat-dot"></span>Bid-Ask</span><a class="meteora-link" href="https://app.meteora.ag/dlmm/8cXz5RdDvKj6YtLoQ9FnHpS4mBuCwIeG3Za2Af7Bd0Cb" target="_blank"><svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg><span class="meteora-link-text">Pool</span></a></div></div>
-        <div class="cp-cell highlight">$1,800</div><div class="cp-cell val-neg">-$87</div><div class="cp-cell" style="color:var(--blue)">$4</div>
-      </div>
-    </div>
-
-  </div>
+<div class="main" id="mainContent">
+  <div class="cards-grid" id="cardsGrid"></div>
 </div>
 
 <!-- DRAWER OVERLAY -->
@@ -821,26 +541,552 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── WALLET MANAGER ───────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// STORAGE KEYS
+// ═══════════════════════════════════════════════════════════════════
+const STORAGE_KEY      = 'lp_tracker_wallets';
+const HELIUS_KEY_STORE = 'lp_tracker_helius_key';
+const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-const STORAGE_KEY = 'lp_tracker_wallets';
+// ═══════════════════════════════════════════════════════════════════
+// METEORA DLMM PROGRAM ID
+// ═══════════════════════════════════════════════════════════════════
+const METEORA_DLMM_PROGRAM = 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo';
 
+// ═══════════════════════════════════════════════════════════════════
+// WALLET STORAGE
+// ═══════════════════════════════════════════════════════════════════
 function loadWallets() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
   catch { return []; }
 }
+function saveWallets(w) { localStorage.setItem(STORAGE_KEY, JSON.stringify(w)); }
+function isValidSolanaAddr(a) { return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a.trim()); }
 
-function saveWallets(wallets) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(wallets));
+// ═══════════════════════════════════════════════════════════════════
+// HELIUS API KEY
+// ═══════════════════════════════════════════════════════════════════
+function getHeliosKey() { return localStorage.getItem(HELIUS_KEY_STORE) || ''; }
+function saveHeliusKey(k) { localStorage.setItem(HELIUS_KEY_STORE, k.trim()); }
+
+// ═══════════════════════════════════════════════════════════════════
+// SETUP SCREEN — shown on first load if no API key
+// ═══════════════════════════════════════════════════════════════════
+function showSetupScreen() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;min-height:60vh;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:36px 40px;max-width:480px;width:100%;">
+        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--green);margin-bottom:6px;">Welcome to LP Tracker</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:24px;line-height:1.7;">
+          To fetch live Meteora positions you need a free Helius API key.<br>
+          Get one at <a href="https://helius.dev" target="_blank" style="color:var(--blue);text-decoration:none;">helius.dev</a> — takes 2 minutes.
+        </div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Helius API Key</div>
+        <div style="display:flex;gap:8px;">
+          <input id="setupKeyInput" class="drawer-input" style="flex:1;" placeholder="Paste your Helius API key..." />
+          <button class="drawer-add-btn" onclick="saveKeyAndStart()">Connect →</button>
+        </div>
+        <div style="margin-top:12px;font-size:10px;color:var(--text3);">
+          Your key is stored only in your browser's localStorage. It never leaves your device except to call Helius directly.
+        </div>
+      </div>
+    </div>`;
 }
 
-function getWallets() { return loadWallets(); }
-
-// Validate Solana address (base58, 32-44 chars)
-function isValidSolanaAddr(addr) {
-  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr.trim());
+function saveKeyAndStart() {
+  const key = document.getElementById('setupKeyInput').value.trim();
+  if (!key) { showToast('Paste your API key first', 'error'); return; }
+  saveHeliusKey(key);
+  showToast('API key saved!', 'success');
+  startApp();
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// HELIUS RPC CALL
+// ═══════════════════════════════════════════════════════════════════
+async function rpcCall(method, params) {
+  const key = getHeliosKey();
+  const res = await fetch(`https://mainnet.helius-rpc.com/?api-key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
+  });
+  if (!res.ok) throw new Error(`RPC error ${res.status}`);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message);
+  return json.result;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FETCH ALL METEORA DLMM POSITIONS FOR A WALLET
+// ═══════════════════════════════════════════════════════════════════
+async function fetchPositions(walletAddress) {
+  // Get all token accounts owned by wallet that belong to Meteora DLMM program
+  const result = await rpcCall('getProgramAccounts', [
+    METEORA_DLMM_PROGRAM,
+    {
+      encoding: 'base64',
+      filters: [
+        { memcmp: { offset: 8, bytes: walletAddress } } // owner filter
+      ]
+    }
+  ]);
+  return result || [];
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STRATEGY DETECTION — analyze bin liquidity distribution
+// ═══════════════════════════════════════════════════════════════════
+function detectStrategy(bins) {
+  if (!bins || bins.length < 3) return 'spot';
+
+  const liquidities = bins.map(b => Number(b.liquiditySupply || b.liquidity || 0));
+  const total = liquidities.reduce((a, b) => a + b, 0);
+  if (total === 0) return 'spot';
+
+  const n = liquidities.length;
+  const third = Math.floor(n / 3);
+
+  // Sum liquidity in left edge, center, right edge thirds
+  const leftSum  = liquidities.slice(0, third).reduce((a, b) => a + b, 0);
+  const rightSum = liquidities.slice(n - third).reduce((a, b) => a + b, 0);
+  const centerSum = liquidities.slice(third, n - third).reduce((a, b) => a + b, 0);
+
+  const edgeRatio   = (leftSum + rightSum) / total;  // high = bid-ask
+  const centerRatio = centerSum / total;               // high = curve
+
+  if (edgeRatio > 0.6)   return 'bidask'; // majority at edges → Bid-Ask
+  if (centerRatio > 0.6) return 'curve';  // majority at center → Curve
+  return 'spot';                           // uniform → Spot
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DECODE POSITION ACCOUNT DATA
+// Meteora DLMM position layout (simplified):
+// bytes 0-7:   discriminator
+// bytes 8-39:  lb_pair (pool pubkey)
+// bytes 40-71: owner (wallet pubkey)
+// bytes 72-75: lower_bin_id (i32)
+// bytes 76-79: upper_bin_id (i32)
+// ═══════════════════════════════════════════════════════════════════
+function decodePosition(accountData, pubkey) {
+  try {
+    const data = Uint8Array.from(atob(accountData[0]), c => c.charCodeAt(0));
+    const view = new DataView(data.buffer);
+
+    // Pool address: bytes 8-39
+    const poolBytes = data.slice(8, 40);
+    const poolAddress = encodeBase58(poolBytes);
+
+    // Lower bin id: bytes 72-75 (i32 little-endian)
+    const lowerBinId = view.getInt32(72, true);
+    // Upper bin id: bytes 76-79 (i32 little-endian)
+    const upperBinId = view.getInt32(76, true);
+
+    return { pubkey, poolAddress, lowerBinId, upperBinId };
+  } catch(e) {
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BASE58 ENCODER (for pubkey bytes → string)
+// ═══════════════════════════════════════════════════════════════════
+function encodeBase58(bytes) {
+  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  let digits = [0];
+  for (let i = 0; i < bytes.length; i++) {
+    let carry = bytes[i];
+    for (let j = 0; j < digits.length; j++) {
+      carry += digits[j] << 8;
+      digits[j] = carry % 58;
+      carry = (carry / 58) | 0;
+    }
+    while (carry > 0) { digits.push(carry % 58); carry = (carry / 58) | 0; }
+  }
+  let str = '';
+  for (let i = bytes.length - 1; i >= 0 && bytes[i] === 0; i--) str += '1';
+  for (let i = digits.length - 1; i >= 0; i--) str += ALPHABET[digits[i]];
+  return str;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FETCH POOL INFO — bin step, token mints, current price
+// ═══════════════════════════════════════════════════════════════════
+async function fetchPoolInfo(poolAddress) {
+  try {
+    const result = await rpcCall('getAccountInfo', [poolAddress, { encoding: 'base64' }]);
+    if (!result || !result.value) return null;
+    const data = Uint8Array.from(atob(result.value.data[0]), c => c.charCodeAt(0));
+    const view = new DataView(data.buffer);
+
+    // LbPair layout:
+    // bytes 8-39:   token_x_mint
+    // bytes 40-71:  token_y_mint
+    // bytes 72-75:  bin_step (u16 at 72)
+    // bytes 80-83:  active_id (i32)
+    const tokenXMint = encodeBase58(data.slice(8, 40));
+    const tokenYMint = encodeBase58(data.slice(40, 72));
+    const binStep    = view.getUint16(72, true);
+    const activeId   = view.getInt32(80, true);
+
+    return { tokenXMint, tokenYMint, binStep, activeId };
+  } catch(e) { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FETCH TOKEN METADATA (symbol + decimals) via Helius DAS
+// ═══════════════════════════════════════════════════════════════════
+const tokenCache = {};
+async function fetchTokenMeta(mint) {
+  if (tokenCache[mint]) return tokenCache[mint];
+  try {
+    const key = getHeliosKey();
+    const res = await fetch(`https://mainnet.helius-rpc.com/?api-key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc:'2.0', id:1, method:'getAsset', params:{ id: mint } })
+    });
+    const json = await res.json();
+    const symbol   = json?.result?.content?.metadata?.symbol || mint.slice(0,4);
+    const decimals = json?.result?.token_info?.decimals ?? 6;
+    tokenCache[mint] = { symbol, decimals };
+    return tokenCache[mint];
+  } catch { return { symbol: mint.slice(0,4), decimals: 6 }; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FETCH TOKEN PRICE in USD via Jupiter price API
+// ═══════════════════════════════════════════════════════════════════
+const priceCache = {};
+async function fetchTokenPrice(mint) {
+  if (priceCache[mint]) return priceCache[mint];
+  try {
+    const res = await fetch(`https://api.jup.ag/price/v2?ids=${mint}`);
+    const json = await res.json();
+    const price = parseFloat(json?.data?.[mint]?.price || 0);
+    priceCache[mint] = price;
+    return price;
+  } catch { return 0; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CALCULATE PRICE FROM BIN ID
+// price = (1 + binStep/10000) ^ binId
+// ═══════════════════════════════════════════════════════════════════
+function binIdToPrice(binId, binStep, decimalsX, decimalsY) {
+  const rawPrice = Math.pow(1 + binStep / 10000, binId);
+  // Adjust for token decimals
+  return rawPrice * Math.pow(10, decimalsX - decimalsY);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FETCH POSITION BINS (for strategy detection + value calculation)
+// ═══════════════════════════════════════════════════════════════════
+async function fetchPositionBins(positionPubkey) {
+  try {
+    // Use getAccountInfo on the position to get bin data
+    // In practice we call Meteora's API endpoint for cleaner data
+    const res = await fetch(
+      `https://dlmm-api.meteora.ag/position/${positionPubkey}`
+    );
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MAIN FETCH — all positions for one wallet
+// ═══════════════════════════════════════════════════════════════════
+async function fetchWalletPositions(walletAddress) {
+  // Use Meteora's own REST API — most reliable source for DLMM positions
+  try {
+    const res = await fetch(
+      `https://dlmm-api.meteora.ag/position/user/${walletAddress}`
+    );
+    if (!res.ok) throw new Error(`Meteora API error: ${res.status}`);
+    const data = await res.json();
+    return data;
+  } catch(e) {
+    console.error('Meteora API failed, trying Helius fallback:', e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FORMAT PRICE — smart decimal formatting
+// ═══════════════════════════════════════════════════════════════════
+function fmtPrice(n) {
+  if (!n || isNaN(n)) return '—';
+  if (n >= 1000)  return n.toLocaleString('en', {maximumFractionDigits: 1});
+  if (n >= 1)     return n.toFixed(4);
+  if (n >= 0.001) return n.toFixed(6);
+  return n.toExponential(3);
+}
+
+function fmtUSD(n) {
+  if (!n || isNaN(n)) return '$—';
+  return '$' + n.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function fmtPnl(n) {
+  if (!n || isNaN(n)) return '—';
+  const sign = n >= 0 ? '+' : '';
+  return sign + fmtUSD(n);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER CARDS FROM LIVE DATA
+// ═══════════════════════════════════════════════════════════════════
+function renderCards(walletsData) {
+  const grid = document.getElementById('cardsGrid');
+  if (!walletsData.length) {
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text3);">
+        <div style="font-size:28px;margin-bottom:12px;opacity:0.4;">◈</div>
+        <div style="font-size:12px;">No wallets tracked yet.</div>
+        <div style="font-size:11px;margin-top:6px;">Click <strong style="color:var(--text2)">⊞ Manage Wallets</strong> to add addresses.</div>
+      </div>`;
+    return;
+  }
+
+  const METEORA_SVG = `<svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>`;
+
+  grid.innerHTML = walletsData.map((wd, wi) => {
+    const wallet = wd.wallet;
+    const positions = wd.positions || [];
+    const short = wallet.address.slice(0,4) + '…' + wallet.address.slice(-4);
+
+    // Totals
+    const totalVal  = positions.reduce((s, p) => s + (p.totalUsd || 0), 0);
+    const totalPnl  = positions.reduce((s, p) => s + (p.pnlUsd || 0), 0);
+    const pnlClass  = totalPnl >= 0 ? 'val-pos' : 'val-neg';
+
+    const posRows = positions.length === 0
+      ? `<div style="padding:16px 14px;font-size:11px;color:var(--text3);text-align:center;">No active DLMM positions</div>`
+      : positions.map(pos => {
+          const stratClass = pos.strategy === 'bidask' ? 'strat-bidask' : pos.strategy === 'curve' ? 'strat-curve' : 'strat-spot';
+          const stratLabel = pos.strategy === 'bidask' ? 'Bid-Ask' : pos.strategy === 'curve' ? 'Curve' : 'Spot';
+          const pClass = (pos.pnlUsd || 0) >= 0 ? 'val-pos' : 'val-neg';
+          const poolUrl = `https://app.meteora.ag/dlmm/${pos.poolAddress}`;
+          return `
+          <div class="card-pos-row">
+            <div class="cp-left">
+              <div class="cp-pair">${pos.pairName}</div>
+              <div class="cp-range">${fmtPrice(pos.minPrice)} – ${fmtPrice(pos.maxPrice)} <span class="cp-range-token">${pos.quoteSymbol}</span></div>
+              <div class="cp-meta">
+                <span class="strategy-tag ${stratClass}"><span class="strat-dot"></span>${stratLabel}</span>
+                <a class="meteora-link" href="${poolUrl}" target="_blank">
+                  ${METEORA_SVG}<span class="meteora-link-text">Pool</span>
+                </a>
+              </div>
+            </div>
+            <div class="cp-cell highlight">${fmtUSD(pos.totalUsd)}</div>
+            <div class="cp-cell ${pClass}">${fmtPnl(pos.pnlUsd)}</div>
+            <div class="cp-cell" style="color:var(--blue)">${fmtUSD(pos.feesUsd)}</div>
+          </div>`;
+        }).join('');
+
+    return `
+    <div class="wallet-card" style="animation-delay:${wi * 0.06}s">
+      <div class="card-header">
+        <div class="card-addr-row">
+          <div class="card-addr" title="${wallet.address}">${wallet.name || short}</div>
+          <button class="card-copy" onclick="copyAddrBtn(this,'${wallet.address}')">copy</button>
+        </div>
+        <div class="card-totals">
+          <div class="card-total-val">${fmtUSD(totalVal)}</div>
+          <div class="card-pnl ${pnlClass}">${fmtPnl(totalPnl)}</div>
+        </div>
+      </div>
+      <div class="card-col-headers">
+        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
+        <div class="cc-h">Value</div>
+        <div class="cc-h">P&L</div>
+        <div class="cc-h">Fees</div>
+      </div>
+      ${posRows}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PARSE METEORA API RESPONSE → normalized position objects
+// ═══════════════════════════════════════════════════════════════════
+async function parseMeteoraPositions(rawData) {
+  if (!rawData) return [];
+  // Meteora API returns array of position groups per pool
+  const positions = [];
+
+  const items = Array.isArray(rawData) ? rawData : (rawData.userPositions || rawData.positions || []);
+
+  for (const item of items) {
+    try {
+      // Each item represents one position
+      const pos = item.position || item;
+      const poolInfo = item.lbPair || item.pool || {};
+
+      // Token symbols
+      const xSymbol = poolInfo?.tokenX?.symbol || poolInfo?.mintX?.slice(0,4) || '???';
+      const ySymbol = poolInfo?.tokenY?.symbol || poolInfo?.mintY?.slice(0,4) || '???';
+      const pairName = `${xSymbol}/${ySymbol}`;
+      const quoteSymbol = ySymbol;
+
+      // Price range from bin IDs
+      const binStep   = poolInfo?.binStep || 1;
+      const decimalsX = poolInfo?.tokenX?.decimals ?? 9;
+      const decimalsY = poolInfo?.tokenY?.decimals ?? 6;
+      const lowerBin  = pos.lowerBinId || pos.positionData?.lowerBinId || 0;
+      const upperBin  = pos.upperBinId || pos.positionData?.upperBinId || 0;
+      const minPrice  = binIdToPrice(lowerBin, binStep, decimalsX, decimalsY);
+      const maxPrice  = binIdToPrice(upperBin, binStep, decimalsX, decimalsY);
+
+      // USD values
+      const totalUsd = parseFloat(pos.totalXAmount || 0) * parseFloat(poolInfo?.tokenX?.priceUSD || 0)
+                     + parseFloat(pos.totalYAmount || 0) * parseFloat(poolInfo?.tokenY?.priceUSD || 0)
+                     || parseFloat(item.currentPositionValues?.positionValue || 0)
+                     || 0;
+
+      const depositedUsd = parseFloat(item.currentPositionValues?.depositedValue || 0);
+      const feesUsd      = parseFloat(item.currentPositionValues?.totalFeeValue
+                        || pos.feeX || 0)
+                        + parseFloat(pos.feeY || 0);
+      const pnlUsd = totalUsd - depositedUsd + feesUsd;
+
+      // Strategy detection from bin liquidity distribution
+      const bins = pos.positionBinData || pos.bins || [];
+      const strategy = detectStrategy(bins);
+
+      // Pool address
+      const poolAddress = item.publicKey || poolInfo?.publicKey || pos.lbPair || '';
+
+      positions.push({
+        pairName, quoteSymbol, minPrice, maxPrice,
+        totalUsd, pnlUsd, feesUsd,
+        strategy, poolAddress
+      });
+    } catch(e) { console.warn('Error parsing position:', e); }
+  }
+
+  return positions;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LOADING STATE
+// ═══════════════════════════════════════════════════════════════════
+function setCardLoading(walletAddress, walletName) {
+  const grid = document.getElementById('cardsGrid');
+  const short = walletAddress.slice(0,4) + '…' + walletAddress.slice(-4);
+  const existing = document.getElementById('wcard_' + walletAddress);
+  const loadHtml = `
+    <div class="wallet-card" id="wcard_${walletAddress}">
+      <div class="card-header">
+        <div class="card-addr-row">
+          <div class="card-addr">${walletName || short}</div>
+        </div>
+        <div style="font-size:10px;color:var(--text3)">Loading…</div>
+      </div>
+      <div style="padding:20px 14px;display:flex;align-items:center;gap:10px;color:var(--text3);font-size:11px;">
+        <div class="pulse-dot"></div> Fetching positions…
+      </div>
+    </div>`;
+  if (existing) { existing.outerHTML = loadHtml; }
+  else { grid.insertAdjacentHTML('beforeend', loadHtml); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// REFRESH — fetch all wallets and re-render
+// ═══════════════════════════════════════════════════════════════════
+let refreshTimer = null;
+let nextRefreshAt = null;
+let countdownTimer = null;
+
+async function refreshAll(silent = false) {
+  const wallets = loadWallets();
+  if (!wallets.length) {
+    renderCards([]);
+    return;
+  }
+
+  if (!silent) updateRefreshBtn('Refreshing…', true);
+
+  const grid = document.getElementById('cardsGrid');
+
+  // Show loading cards immediately
+  grid.innerHTML = '';
+  wallets.forEach(w => setCardLoading(w.address, w.name));
+
+  const results = [];
+
+  // Fetch each wallet in parallel
+  await Promise.all(wallets.map(async (wallet) => {
+    try {
+      const raw = await fetchWalletPositions(wallet.address);
+      const positions = await parseMeteoraPositions(raw);
+      results.push({ wallet, positions, error: null });
+    } catch(e) {
+      console.error(`Error fetching ${wallet.address}:`, e);
+      results.push({ wallet, positions: [], error: e.message });
+    }
+  }));
+
+  // Render in original wallet order
+  const ordered = wallets.map(w => results.find(r => r.wallet.address === w.address) || { wallet: w, positions: [] });
+  renderCards(ordered);
+
+  // Update nav totals
+  const allPos = ordered.flatMap(r => r.positions);
+  const totalVal = allPos.reduce((s, p) => s + (p.totalUsd || 0), 0);
+  const totalPnl = allPos.reduce((s, p) => s + (p.pnlUsd || 0), 0);
+  document.getElementById('navTotalVal').textContent = fmtUSD(totalVal);
+  document.getElementById('navTotalPnl').textContent = fmtPnl(totalPnl);
+  document.getElementById('navTotalPnl').className = 'nav-stat-val ' + (totalPnl >= 0 ? 'val-pos' : 'val-neg');
+  document.getElementById('navWallets').textContent = wallets.length;
+
+  updateRefreshBtn('↻ Refresh', false);
+  scheduleNextRefresh();
+  if (!silent) showToast('Data updated', 'success');
+}
+
+function scheduleNextRefresh() {
+  clearTimeout(refreshTimer);
+  clearInterval(countdownTimer);
+  nextRefreshAt = Date.now() + REFRESH_INTERVAL;
+
+  refreshTimer = setTimeout(() => refreshAll(true), REFRESH_INTERVAL);
+
+  // Countdown in nav
+  countdownTimer = setInterval(() => {
+    const remaining = Math.max(0, nextRefreshAt - Date.now());
+    const m = Math.floor(remaining / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    const el = document.getElementById('refreshCountdown');
+    if (el) el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+    if (remaining <= 0) clearInterval(countdownTimer);
+  }, 1000);
+}
+
+function updateRefreshBtn(label, disabled) {
+  const btn = document.getElementById('refreshBtn');
+  if (!btn) return;
+  btn.textContent = label;
+  btn.disabled = disabled;
+  btn.style.opacity = disabled ? '0.6' : '1';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// START APP
+// ═══════════════════════════════════════════════════════════════════
+function startApp() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `<div class="cards-grid" id="cardsGrid"></div>`;
+  refreshAll();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// WALLET MANAGER
+// ═══════════════════════════════════════════════════════════════════
 function validateInput() {
   const val = document.getElementById('addrInput').value.trim();
   document.getElementById('addBtn').disabled = !isValidSolanaAddr(val);
@@ -849,43 +1095,38 @@ function validateInput() {
 function addWallet(addr, label) {
   const wallets = loadWallets();
   const address = (addr || document.getElementById('addrInput').value).trim();
-  const name = (label || document.getElementById('labelInput').value).trim()
-    || `Wallet ${wallets.length + 1}`;
-
+  const name = (label || document.getElementById('labelInput').value).trim() || `Wallet ${wallets.length + 1}`;
   if (!isValidSolanaAddr(address)) { showToast('Invalid Solana address', 'error'); return; }
-  if (wallets.find(w => w.address === address)) { showToast('Address already tracked', 'error'); return; }
-
+  if (wallets.find(w => w.address === address)) { showToast('Already tracked', 'error'); return; }
   wallets.push({ address, name, addedAt: Date.now() });
   saveWallets(wallets);
   renderWalletList();
-
-  // Clear inputs
   if (!addr) {
     document.getElementById('addrInput').value = '';
     document.getElementById('labelInput').value = '';
     document.getElementById('addBtn').disabled = true;
   }
-
   showToast(`Added: ${name}`, 'success');
+  // Trigger refresh to include new wallet
+  if (getHeliosKey()) refreshAll(true);
 }
 
 function removeWallet(address) {
-  const wallets = loadWallets().filter(w => w.address !== address);
-  saveWallets(wallets);
+  saveWallets(loadWallets().filter(w => w.address !== address));
   renderWalletList();
   showToast('Wallet removed', '');
+  if (getHeliosKey()) refreshAll(true);
 }
 
 function startRename(address) {
-  const wallets = loadWallets();
-  const w = wallets.find(w => w.address === address);
+  const w = loadWallets().find(w => w.address === address);
   const nameEl = document.getElementById('name_' + address);
-  if (!nameEl) return;
+  if (!nameEl || !w) return;
   const input = document.createElement('input');
   input.className = 'wallet-item-name-input';
   input.value = w.name;
   input.onblur = () => finishRename(address, input.value);
-  input.onkeydown = e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { renderWalletList(); } };
+  input.onkeydown = e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderWalletList(); };
   nameEl.replaceWith(input);
   input.focus(); input.select();
 }
@@ -897,12 +1138,11 @@ function finishRename(address, newName) {
   renderWalletList();
 }
 
-function copyAddr(btn, addr) {
+function copyAddrBtn(btn, addr) {
   navigator.clipboard.writeText(addr).then(() => {
     const orig = btn.textContent;
     btn.textContent = 'copied!';
-    btn.style.color = 'var(--green)';
-    btn.style.borderColor = 'var(--green)';
+    btn.style.color = 'var(--green)'; btn.style.borderColor = 'var(--green)';
     setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 1500);
   });
 }
@@ -913,92 +1153,109 @@ function copyWalletAddr(address) {
 
 function copyAllAddrs() {
   const wallets = loadWallets();
-  if (!wallets.length) { showToast('No wallets to copy', 'error'); return; }
+  if (!wallets.length) { showToast('No wallets', 'error'); return; }
   navigator.clipboard.writeText(wallets.map(w => w.address).join('\n'))
     .then(() => showToast(`Copied ${wallets.length} addresses`, 'success'));
 }
 
 function exportWallets() {
   const wallets = loadWallets();
-  if (!wallets.length) { showToast('No wallets to export', 'error'); return; }
-  const content = wallets.map(w => `${w.address}${w.name ? '  # ' + w.name : ''}`).join('\n');
-  const blob = new Blob([content], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url;
-  a.download = 'lp_tracker_wallets.txt'; a.click();
-  URL.revokeObjectURL(url);
+  if (!wallets.length) { showToast('No wallets', 'error'); return; }
+  const blob = new Blob([wallets.map(w => `${w.address}${w.name ? '  # ' + w.name : ''}`).join('\n')], { type: 'text/plain' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'lp_tracker_wallets.txt' });
+  a.click(); URL.revokeObjectURL(a.href);
   showToast('Exported!', 'success');
 }
 
 function importFromFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+  const file = event.target.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    const lines = e.target.result.split('\n').map(l => l.trim()).filter(Boolean);
     let added = 0, skipped = 0;
-    lines.forEach(line => {
-      // Support "address  # label" format
+    e.target.result.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
       const [rawAddr, ...rest] = line.split('#');
-      const addr = rawAddr.trim();
-      const label = rest.join('#').trim();
-      if (isValidSolanaAddr(addr)) {
-        const wallets = loadWallets();
-        if (!wallets.find(w => w.address === addr)) {
-          addWallet(addr, label || '');
-          added++;
-        } else { skipped++; }
-      } else { skipped++; }
+      const addr = rawAddr.trim(), label = rest.join('#').trim();
+      if (isValidSolanaAddr(addr) && !loadWallets().find(w => w.address === addr)) { addWallet(addr, label); added++; }
+      else skipped++;
     });
-    showToast(`Imported ${added} wallets${skipped ? `, ${skipped} skipped` : ''}`, 'success');
+    showToast(`Imported ${added}${skipped ? `, ${skipped} skipped` : ''}`, 'success');
   };
-  reader.readAsText(file);
-  event.target.value = '';
+  reader.readAsText(file); event.target.value = '';
 }
 
 function clearAllWallets() {
   if (!confirm('Remove all tracked wallets?')) return;
-  saveWallets([]);
-  renderWalletList();
-  showToast('All wallets cleared', '');
+  saveWallets([]); renderWalletList();
+  renderCards([]);
+  showToast('Cleared', '');
 }
 
 function renderWalletList() {
   const wallets = loadWallets();
+  document.getElementById('walletCount').textContent = wallets.length;
   const container = document.getElementById('walletItems');
-  const countEl = document.getElementById('walletCount');
-  countEl.textContent = wallets.length;
-
   if (!wallets.length) {
-    container.innerHTML = `
-      <div class="drawer-empty">
-        <div class="drawer-empty-icon">◈</div>
-        No wallets tracked yet.<br>
-        Paste a Solana address above<br>to start tracking.
-      </div>`;
+    container.innerHTML = `<div class="drawer-empty"><div class="drawer-empty-icon">◈</div>No wallets tracked yet.<br>Paste a Solana address above.</div>`;
     return;
   }
-
-  container.innerHTML = wallets.map((w, i) => {
-    const short = w.address.slice(0, 4) + '…' + w.address.slice(-4);
-    const added = new Date(w.addedAt).toLocaleDateString();
+  container.innerHTML = wallets.map(w => {
+    const short = w.address.slice(0,4) + '…' + w.address.slice(-4);
     return `
-    <div class="wallet-item" id="wi_${w.address}">
+    <div class="wallet-item">
       <div class="wallet-item-dot"></div>
       <div class="wallet-item-info">
         <div class="wallet-item-name" id="name_${w.address}" onclick="startRename('${w.address}')" title="Click to rename">${w.name}</div>
-        <div class="wallet-item-addr" title="${w.address}">${short} · added ${added}</div>
+        <div class="wallet-item-addr" title="${w.address}">${short} · ${new Date(w.addedAt).toLocaleDateString()}</div>
       </div>
       <div class="wallet-item-actions">
-        <button class="wi-btn" onclick="copyWalletAddr('${w.address}')" title="Copy address">⎘</button>
+        <button class="wi-btn" onclick="copyWalletAddr('${w.address}')" title="Copy">⎘</button>
         <button class="wi-btn del" onclick="removeWallet('${w.address}')" title="Remove">✕</button>
       </div>
     </div>`;
   }).join('');
 }
 
-// ─── DRAWER TOGGLE ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// SETTINGS — change API key
+// ═══════════════════════════════════════════════════════════════════
+function openSettings() {
+  const current = getHeliosKey();
+  const masked = current ? current.slice(0,6) + '••••••••' + current.slice(-4) : '';
+  const html = `
+    <div style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;" id="settingsModal" onclick="if(event.target.id==='settingsModal')closeSettings()">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 32px;max-width:420px;width:90%;">
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;">⚙ Settings</div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Helius API Key</div>
+        ${current ? `<div style="font-size:10px;color:var(--text2);margin-bottom:8px;">Current: <span style="color:var(--green)">${masked}</span></div>` : ''}
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <input id="newKeyInput" class="drawer-input" style="flex:1;" placeholder="Paste new Helius API key…" />
+          <button class="drawer-add-btn" onclick="updateKey()">Save</button>
+        </div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Auto-refresh</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:16px;">Every 5 minutes (hardcoded, adjustable in future)</div>
+        <button onclick="closeSettings()" style="width:100%;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;">Close</button>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
 
+function updateKey() {
+  const k = document.getElementById('newKeyInput').value.trim();
+  if (!k) { showToast('Enter a key first', 'error'); return; }
+  saveHeliusKey(k);
+  closeSettings();
+  showToast('API key updated!', 'success');
+  refreshAll();
+}
+
+function closeSettings() {
+  const m = document.getElementById('settingsModal');
+  if (m) m.remove();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DRAWER TOGGLE
+// ═══════════════════════════════════════════════════════════════════
 function toggleDrawer() {
   const drawer = document.getElementById('drawer');
   const overlay = document.getElementById('drawerOverlay');
@@ -1009,25 +1266,31 @@ function toggleDrawer() {
   btn.classList.toggle('active', !isOpen);
   if (!isOpen) renderWalletList();
 }
-
-// Close drawer on Escape
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.getElementById('drawer').classList.contains('open')) toggleDrawer();
 });
 
-// ─── TOAST ────────────────────────────────────────────────────────
-
+// ═══════════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════════
 let toastTimer;
 function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show' + (type ? ' ' + type : '');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.className = 'toast'; }, 2200);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 2400);
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
 renderWalletList();
+if (!getHeliosKey()) {
+  showSetupScreen();
+} else {
+  startApp();
+}
 </script>
 </body>
 </html>
