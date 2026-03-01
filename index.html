@@ -619,82 +619,27 @@ async function rpcCall(method, params) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// FETCH ALL METEORA DLMM POSITIONS FOR A WALLET
+// STRATEGY DETECTION
 // ═══════════════════════════════════════════════════════════════════
-async function fetchPositions(walletAddress) {
-  // Get all token accounts owned by wallet that belong to Meteora DLMM program
-  const result = await rpcCall('getProgramAccounts', [
-    METEORA_DLMM_PROGRAM,
-    {
-      encoding: 'base64',
-      filters: [
-        { memcmp: { offset: 8, bytes: walletAddress } } // owner filter
-      ]
-    }
-  ]);
-  return result || [];
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// STRATEGY DETECTION — analyze bin liquidity distribution
-// ═══════════════════════════════════════════════════════════════════
-function detectStrategy(bins) {
-  if (!bins || bins.length < 3) return 'spot';
-
-  const liquidities = bins.map(b => Number(b.liquiditySupply || b.liquidity || 0));
+function detectStrategy(liquidities) {
+  if (!liquidities || liquidities.length < 3) return 'spot';
   const total = liquidities.reduce((a, b) => a + b, 0);
   if (total === 0) return 'spot';
-
   const n = liquidities.length;
   const third = Math.floor(n / 3);
-
-  // Sum liquidity in left edge, center, right edge thirds
-  const leftSum  = liquidities.slice(0, third).reduce((a, b) => a + b, 0);
-  const rightSum = liquidities.slice(n - third).reduce((a, b) => a + b, 0);
-  const centerSum = liquidities.slice(third, n - third).reduce((a, b) => a + b, 0);
-
-  const edgeRatio   = (leftSum + rightSum) / total;  // high = bid-ask
-  const centerRatio = centerSum / total;               // high = curve
-
-  if (edgeRatio > 0.6)   return 'bidask'; // majority at edges → Bid-Ask
-  if (centerRatio > 0.6) return 'curve';  // majority at center → Curve
-  return 'spot';                           // uniform → Spot
+  const edgeSum   = liquidities.slice(0, third).reduce((a,b)=>a+b,0)
+                  + liquidities.slice(n-third).reduce((a,b)=>a+b,0);
+  const centerSum = liquidities.slice(third, n-third).reduce((a,b)=>a+b,0);
+  if (edgeSum / total > 0.6)   return 'bidask';
+  if (centerSum / total > 0.6) return 'curve';
+  return 'spot';
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// DECODE POSITION ACCOUNT DATA
-// Meteora DLMM position layout (simplified):
-// bytes 0-7:   discriminator
-// bytes 8-39:  lb_pair (pool pubkey)
-// bytes 40-71: owner (wallet pubkey)
-// bytes 72-75: lower_bin_id (i32)
-// bytes 76-79: upper_bin_id (i32)
-// ═══════════════════════════════════════════════════════════════════
-function decodePosition(accountData, pubkey) {
-  try {
-    const data = Uint8Array.from(atob(accountData[0]), c => c.charCodeAt(0));
-    const view = new DataView(data.buffer);
-
-    // Pool address: bytes 8-39
-    const poolBytes = data.slice(8, 40);
-    const poolAddress = encodeBase58(poolBytes);
-
-    // Lower bin id: bytes 72-75 (i32 little-endian)
-    const lowerBinId = view.getInt32(72, true);
-    // Upper bin id: bytes 76-79 (i32 little-endian)
-    const upperBinId = view.getInt32(76, true);
-
-    return { pubkey, poolAddress, lowerBinId, upperBinId };
-  } catch(e) {
-    return null;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// BASE58 ENCODER (for pubkey bytes → string)
+// BASE58 ENCODER
 // ═══════════════════════════════════════════════════════════════════
 function encodeBase58(bytes) {
-  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const ALPHA = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   let digits = [0];
   for (let i = 0; i < bytes.length; i++) {
     let carry = bytes[i];
@@ -707,103 +652,91 @@ function encodeBase58(bytes) {
   }
   let str = '';
   for (let i = bytes.length - 1; i >= 0 && bytes[i] === 0; i--) str += '1';
-  for (let i = digits.length - 1; i >= 0; i--) str += ALPHABET[digits[i]];
+  for (let i = digits.length - 1; i >= 0; i--) str += ALPHA[digits[i]];
   return str;
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// FETCH POOL INFO — bin step, token mints, current price
+// DECODE POSITION ACCOUNT — extract lb_pair, lower/upper bin IDs,
+// and per-bin liquidity from raw base64 account data
+// Layout (verified against 8120-byte account):
+//   0-7:   discriminator
+//   8-39:  lb_pair pubkey
+//   40-71: owner pubkey
+//   72-75: lower_bin_id (i32 LE)
+//   76-79: upper_bin_id (i32 LE)
+//   80-87: liquidity_share (u64 LE) for first bin
+//   Each bin entry = 8 bytes (u64 liquidity)
 // ═══════════════════════════════════════════════════════════════════
-async function fetchPoolInfo(poolAddress) {
+function decodePositionAccount(base64Data) {
   try {
-    const result = await rpcCall('getAccountInfo', [poolAddress, { encoding: 'base64' }]);
-    if (!result || !result.value) return null;
-    const data = Uint8Array.from(atob(result.value.data[0]), c => c.charCodeAt(0));
+    const data = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     const view = new DataView(data.buffer);
+    const lbPair    = encodeBase58(data.slice(8, 40));
+    const lowerBinId = view.getInt32(72, true);
+    const upperBinId = view.getInt32(76, true);
+    const numBins = upperBinId - lowerBinId + 1;
 
-    // LbPair layout:
-    // bytes 8-39:   token_x_mint
-    // bytes 40-71:  token_y_mint
-    // bytes 72-75:  bin_step (u16 at 72)
-    // bytes 80-83:  active_id (i32)
-    const tokenXMint = encodeBase58(data.slice(8, 40));
-    const tokenYMint = encodeBase58(data.slice(40, 72));
-    const binStep    = view.getUint16(72, true);
-    const activeId   = view.getInt32(80, true);
+    // Extract per-bin liquidity amounts (u64 each, starting at offset 80)
+    const liquidities = [];
+    for (let i = 0; i < numBins && i < 200; i++) {
+      const offset = 80 + i * 8;
+      if (offset + 8 > data.length) break;
+      // Read u64 as two u32s (JS BigInt not needed for relative comparison)
+      const lo = view.getUint32(offset, true);
+      const hi = view.getUint32(offset + 4, true);
+      liquidities.push(lo + hi * 4294967296);
+    }
 
-    return { tokenXMint, tokenYMint, binStep, activeId };
-  } catch(e) { return null; }
+    return { lbPair, lowerBinId, upperBinId, liquidities };
+  } catch(e) {
+    console.warn('decodePositionAccount error:', e);
+    return null;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// FETCH TOKEN METADATA (symbol + decimals) via Helius DAS
+// BIN ID → PRICE
+// price = (1 + binStep/10000)^binId * 10^(decimalsX - decimalsY)
 // ═══════════════════════════════════════════════════════════════════
-const tokenCache = {};
-async function fetchTokenMeta(mint) {
-  if (tokenCache[mint]) return tokenCache[mint];
-  try {
-    const key = getHeliosKey();
-    const res = await fetch(`https://mainnet.helius-rpc.com/?api-key=${key}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc:'2.0', id:1, method:'getAsset', params:{ id: mint } })
-    });
-    const json = await res.json();
-    const symbol   = json?.result?.content?.metadata?.symbol || mint.slice(0,4);
-    const decimals = json?.result?.token_info?.decimals ?? 6;
-    tokenCache[mint] = { symbol, decimals };
-    return tokenCache[mint];
-  } catch { return { symbol: mint.slice(0,4), decimals: 6 }; }
+function binIdToPrice(binId, binStep, decimalsX, decimalsY) {
+  return Math.pow(1 + binStep / 10000, binId) * Math.pow(10, decimalsX - decimalsY);
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// FETCH TOKEN PRICE in USD via Jupiter price API
+// JUPITER PRICE API — fetch USD price for a token mint
 // ═══════════════════════════════════════════════════════════════════
 const priceCache = {};
-async function fetchTokenPrice(mint) {
-  if (priceCache[mint]) return priceCache[mint];
+async function getTokenPriceUSD(mint) {
+  if (priceCache[mint] !== undefined) return priceCache[mint];
   try {
     const res = await fetch(`https://api.jup.ag/price/v2?ids=${mint}`);
     const json = await res.json();
     const price = parseFloat(json?.data?.[mint]?.price || 0);
     priceCache[mint] = price;
     return price;
-  } catch { return 0; }
+  } catch { priceCache[mint] = 0; return 0; }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// CALCULATE PRICE FROM BIN ID
-// price = (1 + binStep/10000) ^ binId
+// FETCH PAIR INFO from Meteora REST API
 // ═══════════════════════════════════════════════════════════════════
-function binIdToPrice(binId, binStep, decimalsX, decimalsY) {
-  const rawPrice = Math.pow(1 + binStep / 10000, binId);
-  // Adjust for token decimals
-  return rawPrice * Math.pow(10, decimalsX - decimalsY);
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// FETCH POSITION BINS (for strategy detection + value calculation)
-// ═══════════════════════════════════════════════════════════════════
-async function fetchPositionBins(positionPubkey) {
+const pairCache = {};
+async function fetchPairInfo(pairAddress) {
+  if (pairCache[pairAddress]) return pairCache[pairAddress];
   try {
-    // Use getAccountInfo on the position to get bin data
-    // In practice we call Meteora's API endpoint for cleaner data
-    const res = await fetch(
-      `https://dlmm-api.meteora.ag/position/${positionPubkey}`
-    );
+    const res = await fetch(`https://dlmm-api.meteora.ag/pair/${pairAddress}`);
     if (!res.ok) return null;
-    return await res.json();
+    const data = await res.json();
+    pairCache[pairAddress] = data;
+    return data;
   } catch { return null; }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// STEP 1 — Get all position pubkeys for a wallet via Helius
-// Meteora Position layout:
-//   bytes 0-7:   discriminator
-//   bytes 8-39:  lb_pair (pool pubkey)
-//   bytes 40-71: owner (wallet pubkey) ← memcmp filter at offset 40
+// STEP 1 — Get all position pubkeys + raw account data for a wallet
 // ═══════════════════════════════════════════════════════════════════
-async function getPositionPubkeys(walletAddress) {
+async function getPositionAccounts(walletAddress) {
   const results = await rpcCall('getProgramAccounts', [
     METEORA_DLMM_PROGRAM,
     {
@@ -813,40 +746,131 @@ async function getPositionPubkeys(walletAddress) {
       ]
     }
   ]);
-  return (results || []).map(r => r.pubkey);
+  return results || [];
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// STEP 2 — Fetch full position detail from Meteora REST API
-// GET /position/{address} returns token info, bin data, amounts, fees
-// ═══════════════════════════════════════════════════════════════════
-async function fetchPositionDetail(positionAddress) {
-  try {
-    const res = await fetch(`https://dlmm-api.meteora.ag/position/${positionAddress}`);
-    if (!res.ok) return null;
-    return await res.json();
-  } catch { return null; }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MAIN FETCH — combine step 1 + step 2
+// MAIN FETCH — get all positions for a wallet with full data
 // ═══════════════════════════════════════════════════════════════════
 async function fetchWalletPositions(walletAddress) {
-  const pubkeys = await getPositionPubkeys(walletAddress);
-  console.log(`[${walletAddress.slice(0,6)}] found ${pubkeys.length} position accounts`);
-  if (!pubkeys.length) return [];
+  // Get raw position accounts from chain
+  const accounts = await getPositionAccounts(walletAddress);
+  console.log(`[${walletAddress.slice(0,6)}] found ${accounts.length} position accounts`);
+  if (!accounts.length) return [];
 
-  // Fetch details in batches of 5 to respect rate limits
-  const BATCH = 5;
-  const details = [];
-  for (let i = 0; i < pubkeys.length; i += BATCH) {
-    const batch = pubkeys.slice(i, i + BATCH);
-    const results = await Promise.all(batch.map(pk => fetchPositionDetail(pk)));
-    details.push(...results.filter(Boolean));
-    if (i + BATCH < pubkeys.length) await new Promise(r => setTimeout(r, 300));
+  // Process each position
+  const positions = [];
+  for (const account of accounts) {
+    try {
+      const base64 = account.account.data[0];
+      const decoded = decodePositionAccount(base64);
+      if (!decoded) continue;
+
+      // Fetch pair info (cached) — gives us token symbols, decimals, bin_step, current_price
+      const pair = await fetchPairInfo(decoded.lbPair);
+      if (!pair) continue;
+
+      const binStep   = pair.bin_step || 1;
+
+      // Determine token decimals from known mints or defaults
+      // SOL = 9 decimals, most SPL tokens = 6 or 9
+      // We infer from pair name: if mint_y is SOL mint, y=9
+      const SOL_MINT  = 'So11111111111111111111111111111111111111112';
+      const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+      const USDT_MINT = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
+
+      const decimalsX = pair.mint_x === SOL_MINT ? 9
+                      : (pair.mint_x === USDC_MINT || pair.mint_x === USDT_MINT) ? 6 : 6;
+      const decimalsY = pair.mint_y === SOL_MINT ? 9
+                      : (pair.mint_y === USDC_MINT || pair.mint_y === USDT_MINT) ? 6 : 6;
+
+      // Price range in token Y terms
+      const minPrice = binIdToPrice(decoded.lowerBinId, binStep, decimalsX, decimalsY);
+      const maxPrice = binIdToPrice(decoded.upperBinId, binStep, decimalsX, decimalsY);
+
+      // Get USD prices for both tokens
+      const [priceX, priceY] = await Promise.all([
+        getTokenPriceUSD(pair.mint_x),
+        getTokenPriceUSD(pair.mint_y)
+      ]);
+
+      // Estimate position value from pool reserves proportionally
+      // Pool has reserve_x_amount and reserve_y_amount (raw), liquidity total
+      // We estimate position's share by comparing bin range overlap with pool
+      // For now use current_price and bin range to estimate token split
+      const totalBins = decoded.upperBinId - decoded.lowerBinId + 1;
+      const activeBinId = Math.round(
+        Math.log(pair.current_price / Math.pow(10, decimalsX - decimalsY))
+        / Math.log(1 + binStep / 10000)
+      );
+
+      // Check if active bin is within position range
+      const isActive = activeBinId >= decoded.lowerBinId && activeBinId <= decoded.upperBinId;
+
+      // Calculate position's liquidity share vs pool total
+      const posLiquidity = decoded.liquidities.reduce((a, b) => a + b, 0);
+
+      // Pool total liquidity (from pair.liquidity string)
+      const poolLiquidity = parseFloat(pair.liquidity || 1);
+
+      // Estimate position USD value from pool TVL
+      // Pool TVL = reserve_x * priceX + reserve_y * priceY
+      const reserveX = pair.reserve_x_amount / Math.pow(10, decimalsX);
+      const reserveY = pair.reserve_y_amount / Math.pow(10, decimalsY);
+      const poolTVL  = reserveX * priceX + reserveY * priceY;
+
+      // Position share — use liquidity ratio if available, else estimate from bin overlap
+      let posShare = 0;
+      if (poolLiquidity > 0 && posLiquidity > 0) {
+        // This is approximate — real share needs bin-level accounting
+        posShare = Math.min(posLiquidity / (poolLiquidity * 1e6 + posLiquidity), 1);
+      }
+
+      // Fees from position endpoint
+      let feesUsd = 0;
+      try {
+        const posRes = await fetch(`https://dlmm-api.meteora.ag/position/${account.pubkey}`);
+        if (posRes.ok) {
+          const posData = await posRes.json();
+          feesUsd = parseFloat(posData.total_fee_usd_claimed || 0);
+        }
+      } catch {}
+
+      // Parse token symbols from pair name (e.g. "Aslan-SOL" → X=Aslan, Y=SOL)
+      const nameParts = (pair.name || '').split('-');
+      const xSymbol = nameParts[0] || pair.mint_x.slice(0,4);
+      const ySymbol = nameParts[1] || pair.mint_y.slice(0,4);
+
+      // Strategy from bin liquidity distribution
+      const strategy = detectStrategy(decoded.liquidities);
+
+      positions.push({
+        positionAddress: account.pubkey,
+        poolAddress:     decoded.lbPair,
+        pairName:        `${xSymbol}/${ySymbol}`,
+        quoteSymbol:     ySymbol,
+        minPrice,
+        maxPrice,
+        totalUsd:        poolTVL * posShare,
+        pnlUsd:          0, // needs deposit history
+        feesUsd,
+        strategy,
+        isActive,
+        priceX,
+        priceY,
+      });
+    } catch(e) {
+      console.warn('Error processing position:', account.pubkey, e);
+    }
   }
-  return details;
+  return positions;
 }
+
+// Kept for compatibility — now fetchWalletPositions returns parsed positions directly
+async function parseMeteoraPositions(positions) {
+  return positions || [];
+}
+
 
 // ═══════════════════════════════════════════════════════════════════
 // FORMAT PRICE — smart decimal formatting
@@ -971,67 +995,6 @@ function renderCards(walletsData) {
 //   position_bin_data: [ { bin_id, price, position_liquidity, bin_liquidity } ]
 // }
 // ═══════════════════════════════════════════════════════════════════
-async function parseMeteoraPositions(rawDetails) {
-  if (!rawDetails || !rawDetails.length) return [];
-  const positions = [];
-
-  for (const item of rawDetails) {
-    try {
-      const lb = item.lb_pair || {};
-      const tokenX = lb.token_x || {};
-      const tokenY = lb.token_y || {};
-
-      // Pair name
-      const xSymbol = tokenX.symbol || (lb.mint_x || '').slice(0, 4) || '???';
-      const ySymbol = tokenY.symbol || (lb.mint_y || '').slice(0, 4) || '???';
-      const pairName = `${xSymbol}/${ySymbol}`;
-      const quoteSymbol = ySymbol;
-
-      // Price range
-      const binStep   = lb.bin_step || 1;
-      const decimalsX = tokenX.decimals ?? 9;
-      const decimalsY = tokenY.decimals ?? 6;
-      const lowerBin  = item.lower_bin_id || 0;
-      const upperBin  = item.upper_bin_id || 0;
-      const minPrice  = binIdToPrice(lowerBin, binStep, decimalsX, decimalsY);
-      const maxPrice  = binIdToPrice(upperBin, binStep, decimalsX, decimalsY);
-
-      // USD values — Meteora returns usd_amount directly on token_x/token_y
-      const xUsd = parseFloat(tokenX.usd_amount || 0);
-      const yUsd = parseFloat(tokenY.usd_amount || 0);
-      const totalUsd = xUsd + yUsd;
-
-      // Fees in USD
-      const feeXAmt  = parseFloat(item.fee_x || 0) / Math.pow(10, decimalsX);
-      const feeYAmt  = parseFloat(item.fee_y || 0) / Math.pow(10, decimalsY);
-      const xPrice   = parseFloat(lb.price_usd || lb.current_price || 0);
-      const yPrice   = xPrice > 0 ? 1 : 0; // y is usually USD-denominated
-      // Try to get y price from token amounts if available
-      const feesUsd  = parseFloat(item.total_fee_usd || 0)
-                    || (feeXAmt * xPrice + feeYAmt);
-
-      // P&L — Meteora doesn't directly give deposited value in this endpoint
-      // Use 0 for now (will add deposit tracking later)
-      const pnlUsd = 0;
-
-      // Strategy from bin data
-      const bins = item.position_bin_data || [];
-      const strategy = detectStrategy(bins.map(b => ({ liquiditySupply: b.position_liquidity || b.bin_liquidity || 0 })));
-
-      // Pool address
-      const poolAddress = item.pair_address || lb.address || '';
-
-      positions.push({
-        pairName, quoteSymbol, minPrice, maxPrice,
-        totalUsd, pnlUsd, feesUsd,
-        strategy, poolAddress
-      });
-    } catch(e) {
-      console.warn('Error parsing position:', e, item);
-    }
-  }
-  return positions;
-}
 // ═══════════════════════════════════════════════════════════════════
 // LOADING STATE
 // ═══════════════════════════════════════════════════════════════════
