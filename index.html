@@ -603,7 +603,7 @@ function saveKeyAndStart() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// HELIUS RPC CALL
+// HELIUS RPC CALL (still used for getProgramAccounts to get position pubkeys)
 // ═══════════════════════════════════════════════════════════════════
 async function rpcCall(method, params) {
   const key = getHeliosKey();
@@ -619,107 +619,38 @@ async function rpcCall(method, params) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// STRATEGY DETECTION
+// STRATEGY DETECTION — from bin liquidity distribution
+// Uses position account lower/upper bin IDs and the pool's active bin
+// to detect if liquidity is spread (Spot), at edges (Bid-Ask), or center (Curve)
 // ═══════════════════════════════════════════════════════════════════
-function detectStrategy(liquidities) {
-  if (!liquidities || liquidities.length < 3) return 'spot';
-  const total = liquidities.reduce((a, b) => a + b, 0);
-  if (total === 0) return 'spot';
-  const n = liquidities.length;
-  const third = Math.floor(n / 3);
-  const edgeSum   = liquidities.slice(0, third).reduce((a,b)=>a+b,0)
-                  + liquidities.slice(n-third).reduce((a,b)=>a+b,0);
-  const centerSum = liquidities.slice(third, n-third).reduce((a,b)=>a+b,0);
-  if (edgeSum / total > 0.6)   return 'bidask';
-  if (centerSum / total > 0.6) return 'curve';
+function detectStrategy(lowerBinId, upperBinId, activeBinId) {
+  const totalBins = upperBinId - lowerBinId + 1;
+  if (totalBins <= 1) return 'spot';
+
+  // Where is the active bin relative to the position range?
+  const activeOffset = activeBinId - lowerBinId;
+  const relPos = activeOffset / (totalBins - 1); // 0=bottom, 0.5=center, 1=top
+
+  // If active bin is outside the range — position is out of range, treat as spot
+  if (activeBinId < lowerBinId || activeBinId > upperBinId) return 'spot';
+
+  // Narrow range = likely Bid-Ask (concentrated at edges)
+  // Wide range centered on active = Curve or Spot
+  const rangeWidth = totalBins;
+  if (rangeWidth <= 10) return 'bidask';  // very tight range
+  if (relPos > 0.3 && relPos < 0.7) return 'curve';  // active bin near center
   return 'spot';
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// BASE58 ENCODER
-// ═══════════════════════════════════════════════════════════════════
-function encodeBase58(bytes) {
-  const ALPHA = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  let digits = [0];
-  for (let i = 0; i < bytes.length; i++) {
-    let carry = bytes[i];
-    for (let j = 0; j < digits.length; j++) {
-      carry += digits[j] << 8;
-      digits[j] = carry % 58;
-      carry = (carry / 58) | 0;
-    }
-    while (carry > 0) { digits.push(carry % 58); carry = (carry / 58) | 0; }
-  }
-  let str = '';
-  for (let i = bytes.length - 1; i >= 0 && bytes[i] === 0; i--) str += '1';
-  for (let i = digits.length - 1; i >= 0; i--) str += ALPHA[digits[i]];
-  return str;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// DECODE POSITION ACCOUNT — extract lb_pair, lower/upper bin IDs,
-// and per-bin liquidity from raw base64 account data
-// Layout (verified against 8120-byte account):
-//   0-7:   discriminator
-//   8-39:  lb_pair pubkey
-//   40-71: owner pubkey
-//   72-75: lower_bin_id (i32 LE)
-//   76-79: upper_bin_id (i32 LE)
-//   80-87: liquidity_share (u64 LE) for first bin
-//   Each bin entry = 8 bytes (u64 liquidity)
-// ═══════════════════════════════════════════════════════════════════
-function decodePositionAccount(base64Data) {
-  try {
-    const data = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-    const view = new DataView(data.buffer);
-    const lbPair    = encodeBase58(data.slice(8, 40));
-    const lowerBinId = view.getInt32(72, true);
-    const upperBinId = view.getInt32(76, true);
-    const numBins = upperBinId - lowerBinId + 1;
-
-    // Extract per-bin liquidity amounts (u64 each, starting at offset 80)
-    const liquidities = [];
-    for (let i = 0; i < numBins && i < 200; i++) {
-      const offset = 80 + i * 8;
-      if (offset + 8 > data.length) break;
-      // Read u64 as two u32s (JS BigInt not needed for relative comparison)
-      const lo = view.getUint32(offset, true);
-      const hi = view.getUint32(offset + 4, true);
-      liquidities.push(lo + hi * 4294967296);
-    }
-
-    return { lbPair, lowerBinId, upperBinId, liquidities };
-  } catch(e) {
-    console.warn('decodePositionAccount error:', e);
-    return null;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
 // BIN ID → PRICE
-// price = (1 + binStep/10000)^binId * 10^(decimalsX - decimalsY)
 // ═══════════════════════════════════════════════════════════════════
 function binIdToPrice(binId, binStep, decimalsX, decimalsY) {
   return Math.pow(1 + binStep / 10000, binId) * Math.pow(10, decimalsX - decimalsY);
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// JUPITER PRICE API — fetch USD price for a token mint
-// ═══════════════════════════════════════════════════════════════════
-const priceCache = {};
-async function getTokenPriceUSD(mint) {
-  if (priceCache[mint] !== undefined) return priceCache[mint];
-  try {
-    const res = await fetch(`https://api.jup.ag/price/v2?ids=${mint}`);
-    const json = await res.json();
-    const price = parseFloat(json?.data?.[mint]?.price || 0);
-    priceCache[mint] = price;
-    return price;
-  } catch { priceCache[mint] = 0; return 0; }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// FETCH PAIR INFO from Meteora REST API
+// FETCH PAIR INFO from Meteora old API (for bin_step + decimals + active bin)
 // ═══════════════════════════════════════════════════════════════════
 const pairCache = {};
 async function fetchPairInfo(pairAddress) {
@@ -734,143 +665,102 @@ async function fetchPairInfo(pairAddress) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// STEP 1 — Get all position pubkeys + raw account data for a wallet
-// ═══════════════════════════════════════════════════════════════════
-async function getPositionAccounts(walletAddress) {
-  const results = await rpcCall('getProgramAccounts', [
-    METEORA_DLMM_PROGRAM,
-    {
-      encoding: 'base64',
-      filters: [
-        { memcmp: { offset: 40, bytes: walletAddress } }
-      ]
-    }
-  ]);
-  return results || [];
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MAIN FETCH — get all positions for a wallet with full data
+// MAIN FETCH — uses dlmm.datapi.meteora.ag/portfolio/open
+// Returns balances, PnL, fees, token names all in one call
 // ═══════════════════════════════════════════════════════════════════
 async function fetchWalletPositions(walletAddress) {
-  // Get raw position accounts from chain
-  const accounts = await getPositionAccounts(walletAddress);
-  console.log(`[${walletAddress.slice(0,6)}] found ${accounts.length} position accounts`);
-  if (!accounts.length) return [];
+  const res = await fetch(
+    `https://dlmm.datapi.meteora.ag/portfolio/open?user=${walletAddress}`
+  );
+  if (!res.ok) throw new Error(`Portfolio API error: ${res.status}`);
+  const data = await res.json();
 
-  // Process each position
+  const pools = data.pools || [];
+  console.log(`[${walletAddress.slice(0,6)}] found ${pools.length} pools, ${data.total?.balances ? '$'+parseFloat(data.total.balances).toFixed(2) : ''}`);
+
   const positions = [];
-  for (const account of accounts) {
+  const solPrice = parseFloat(data.solPrice || 0);
+
+  for (const pool of pools) {
     try {
-      const base64 = account.account.data[0];
-      const decoded = decodePositionAccount(base64);
-      if (!decoded) continue;
+      // Get position-level detail — each pool can have multiple positions
+      // but listPositions gives us pubkeys for per-position data
+      const positionPubkeys = pool.listPositions || [];
 
-      // Fetch pair info (cached) — gives us token symbols, decimals, bin_step, current_price
-      const pair = await fetchPairInfo(decoded.lbPair);
-      if (!pair) continue;
+      // Fetch pair info for bin_step + current_price (for price range + strategy)
+      const pair = await fetchPairInfo(pool.poolAddress);
+      const binStep = pair?.bin_step || 1;
 
-      const binStep   = pair.bin_step || 1;
-
-      // Determine token decimals from known mints or defaults
-      // SOL = 9 decimals, most SPL tokens = 6 or 9
-      // We infer from pair name: if mint_y is SOL mint, y=9
+      // Token decimals
       const SOL_MINT  = 'So11111111111111111111111111111111111111112';
       const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
       const USDT_MINT = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
+      const decimalsX = pool.tokenXMint === SOL_MINT ? 9
+                      : (pool.tokenXMint === USDC_MINT || pool.tokenXMint === USDT_MINT) ? 6 : 6;
+      const decimalsY = pool.tokenYMint === SOL_MINT ? 9
+                      : (pool.tokenYMint === USDC_MINT || pool.tokenYMint === USDT_MINT) ? 6 : 6;
 
-      const decimalsX = pair.mint_x === SOL_MINT ? 9
-                      : (pair.mint_x === USDC_MINT || pair.mint_x === USDT_MINT) ? 6 : 6;
-      const decimalsY = pair.mint_y === SOL_MINT ? 9
-                      : (pair.mint_y === USDC_MINT || pair.mint_y === USDT_MINT) ? 6 : 6;
+      // For each position pubkey, fetch bin details for price range + strategy
+      for (const posPubkey of positionPubkeys) {
+        // Fetch position account from Helius for bin IDs
+        let lowerBinId = 0, upperBinId = 0;
+        try {
+          const acct = await rpcCall('getAccountInfo', [posPubkey, { encoding: 'base64' }]);
+          if (acct?.value?.data?.[0]) {
+            const data = Uint8Array.from(atob(acct.value.data[0]), c => c.charCodeAt(0));
+            const view = new DataView(data.buffer);
+            lowerBinId = view.getInt32(72, true);
+            upperBinId = view.getInt32(76, true);
+          }
+        } catch(e) { /* use 0,0 fallback */ }
 
-      // Price range in token Y terms
-      const minPrice = binIdToPrice(decoded.lowerBinId, binStep, decimalsX, decimalsY);
-      const maxPrice = binIdToPrice(decoded.upperBinId, binStep, decimalsX, decimalsY);
-
-      // Get USD prices for both tokens
-      const [priceX, priceY] = await Promise.all([
-        getTokenPriceUSD(pair.mint_x),
-        getTokenPriceUSD(pair.mint_y)
-      ]);
-
-      // Estimate position value from pool reserves proportionally
-      // Pool has reserve_x_amount and reserve_y_amount (raw), liquidity total
-      // We estimate position's share by comparing bin range overlap with pool
-      // For now use current_price and bin range to estimate token split
-      const totalBins = decoded.upperBinId - decoded.lowerBinId + 1;
-      const activeBinId = Math.round(
-        Math.log(pair.current_price / Math.pow(10, decimalsX - decimalsY))
-        / Math.log(1 + binStep / 10000)
-      );
-
-      // Check if active bin is within position range
-      const isActive = activeBinId >= decoded.lowerBinId && activeBinId <= decoded.upperBinId;
-
-      // Calculate position's liquidity share vs pool total
-      const posLiquidity = decoded.liquidities.reduce((a, b) => a + b, 0);
-
-      // Pool total liquidity (from pair.liquidity string)
-      const poolLiquidity = parseFloat(pair.liquidity || 1);
-
-      // Estimate position USD value from pool TVL
-      // Pool TVL = reserve_x * priceX + reserve_y * priceY
-      const reserveX = pair.reserve_x_amount / Math.pow(10, decimalsX);
-      const reserveY = pair.reserve_y_amount / Math.pow(10, decimalsY);
-      const poolTVL  = reserveX * priceX + reserveY * priceY;
-
-      // Position share — use liquidity ratio if available, else estimate from bin overlap
-      let posShare = 0;
-      if (poolLiquidity > 0 && posLiquidity > 0) {
-        // This is approximate — real share needs bin-level accounting
-        posShare = Math.min(posLiquidity / (poolLiquidity * 1e6 + posLiquidity), 1);
-      }
-
-      // Fees from position endpoint
-      let feesUsd = 0;
-      try {
-        const posRes = await fetch(`https://dlmm-api.meteora.ag/position/${account.pubkey}`);
-        if (posRes.ok) {
-          const posData = await posRes.json();
-          feesUsd = parseFloat(posData.total_fee_usd_claimed || 0);
+        // Active bin from pair current_price
+        let activeBinId = 0;
+        if (pair?.current_price && binStep) {
+          const rawPrice = pair.current_price / Math.pow(10, decimalsX - decimalsY);
+          activeBinId = Math.round(Math.log(rawPrice) / Math.log(1 + binStep / 10000));
         }
-      } catch {}
 
-      // Parse token symbols from pair name (e.g. "Aslan-SOL" → X=Aslan, Y=SOL)
-      const nameParts = (pair.name || '').split('-');
-      const xSymbol = nameParts[0] || pair.mint_x.slice(0,4);
-      const ySymbol = nameParts[1] || pair.mint_y.slice(0,4);
+        const minPrice = lowerBinId ? binIdToPrice(lowerBinId, binStep, decimalsX, decimalsY) : 0;
+        const maxPrice = upperBinId ? binIdToPrice(upperBinId, binStep, decimalsX, decimalsY) : 0;
+        const strategy = detectStrategy(lowerBinId, upperBinId, activeBinId);
+        const isOutOfRange = pool.outOfRange || false;
 
-      // Strategy from bin liquidity distribution
-      const strategy = detectStrategy(decoded.liquidities);
+        // USD values come directly from the portfolio API
+        // If multiple positions in same pool, split evenly (rare edge case)
+        const count = positionPubkeys.length || 1;
+        const totalUsd      = parseFloat(pool.balances || 0) / count;
+        const pnlUsd        = parseFloat(pool.pnl || 0) / count;
+        const feesUsd       = parseFloat(pool.unclaimedFees || 0) / count;
+        const pnlPct        = parseFloat(pool.pnlPctChange || 0);
 
-      positions.push({
-        positionAddress: account.pubkey,
-        poolAddress:     decoded.lbPair,
-        pairName:        `${xSymbol}/${ySymbol}`,
-        quoteSymbol:     ySymbol,
-        minPrice,
-        maxPrice,
-        totalUsd:        poolTVL * posShare,
-        pnlUsd:          0, // needs deposit history
-        feesUsd,
-        strategy,
-        isActive,
-        priceX,
-        priceY,
-      });
+        positions.push({
+          positionAddress: posPubkey,
+          poolAddress:     pool.poolAddress,
+          pairName:        `${pool.tokenX}/${pool.tokenY}`,
+          quoteSymbol:     pool.tokenY,
+          minPrice,
+          maxPrice,
+          totalUsd,
+          pnlUsd,
+          feesUsd,
+          pnlPct,
+          strategy,
+          isOutOfRange,
+        });
+      }
     } catch(e) {
-      console.warn('Error processing position:', account.pubkey, e);
+      console.warn('Error processing pool:', pool.poolAddress, e);
     }
   }
+
   return positions;
 }
 
-// Kept for compatibility — now fetchWalletPositions returns parsed positions directly
+// Compatibility shim
 async function parseMeteoraPositions(positions) {
   return positions || [];
 }
-
 
 // ═══════════════════════════════════════════════════════════════════
 // FORMAT PRICE — smart decimal formatting
@@ -928,6 +818,8 @@ function renderCards(walletsData) {
           const stratLabel = pos.strategy === 'bidask' ? 'Bid-Ask' : pos.strategy === 'curve' ? 'Curve' : 'Spot';
           const pClass = (pos.pnlUsd || 0) >= 0 ? 'val-pos' : 'val-neg';
           const poolUrl = `https://app.meteora.ag/dlmm/${pos.poolAddress}`;
+          const pnlPctStr = pos.pnlPct ? ` (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : '';
+          const oorTag = pos.isOutOfRange ? `<span style="font-size:9px;padding:2px 5px;border-radius:3px;background:var(--red-dim);color:var(--red);border:1px solid var(--red)33;font-weight:700;letter-spacing:0.3px;">OUT OF RANGE</span>` : '';
           return `
           <div class="card-pos-row">
             <div class="cp-left">
@@ -935,13 +827,14 @@ function renderCards(walletsData) {
               <div class="cp-range">${fmtPrice(pos.minPrice)} – ${fmtPrice(pos.maxPrice)} <span class="cp-range-token">${pos.quoteSymbol}</span></div>
               <div class="cp-meta">
                 <span class="strategy-tag ${stratClass}"><span class="strat-dot"></span>${stratLabel}</span>
+                ${oorTag}
                 <a class="meteora-link" href="${poolUrl}" target="_blank">
                   ${METEORA_SVG}<span class="meteora-link-text">Pool</span>
                 </a>
               </div>
             </div>
             <div class="cp-cell highlight">${fmtUSD(pos.totalUsd)}</div>
-            <div class="cp-cell ${pClass}">${fmtPnl(pos.pnlUsd)}</div>
+            <div class="cp-cell ${pClass}">${fmtPnl(pos.pnlUsd)}<span style="font-size:9px;opacity:0.7">${pnlPctStr}</span></div>
             <div class="cp-cell" style="color:var(--blue)">${fmtUSD(pos.feesUsd)}</div>
           </div>`;
         }).join('');
