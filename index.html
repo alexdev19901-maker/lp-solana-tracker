@@ -475,7 +475,7 @@
   <div class="nav-sep"></div>
   <div class="nav-info">PROTOCOL <span>METEORA DLMM</span></div>
   <div class="nav-right">
-    <div class="nav-stat"><div class="nav-stat-val" id="navTotalVal" style="color:var(--green)">—</div><div class="nav-stat-label">Total Value</div></div>
+    <div class="nav-stat"><div class="nav-stat-val" id="navTotalVal" style="color:var(--green)">—</div><div class="nav-stat-label">Total (SOL)</div></div>
     <div class="nav-sep"></div>
     <div class="nav-stat"><div class="nav-stat-val" id="navTotalPnl">—</div><div class="nav-stat-label">P&L</div></div>
     <div class="nav-sep"></div>
@@ -645,8 +645,10 @@ function detectStrategy(lowerBinId, upperBinId, activeBinId) {
 // ═══════════════════════════════════════════════════════════════════
 // BIN ID → PRICE
 // ═══════════════════════════════════════════════════════════════════
-function binIdToPrice(binId, binStep, decimalsX, decimalsY) {
-  return Math.pow(1 + binStep / 10000, binId) * Math.pow(10, decimalsX - decimalsY);
+function binIdToPrice(binId, binStep) {
+  // Meteora pair API returns current_price already in human-readable scale
+  // so we just use the raw formula without decimal adjustment
+  return Math.pow(1 + binStep / 10000, binId);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -717,21 +719,20 @@ async function fetchWalletPositions(walletAddress) {
         // Active bin from pair current_price
         let activeBinId = 0;
         if (pair?.current_price && binStep) {
-          const rawPrice = pair.current_price / Math.pow(10, decimalsX - decimalsY);
-          activeBinId = Math.round(Math.log(rawPrice) / Math.log(1 + binStep / 10000));
+          activeBinId = Math.round(Math.log(pair.current_price) / Math.log(1 + binStep / 10000));
         }
 
-        const minPrice = lowerBinId ? binIdToPrice(lowerBinId, binStep, decimalsX, decimalsY) : 0;
-        const maxPrice = upperBinId ? binIdToPrice(upperBinId, binStep, decimalsX, decimalsY) : 0;
+        const minPrice = lowerBinId ? binIdToPrice(lowerBinId, binStep) : 0;
+        const maxPrice = upperBinId ? binIdToPrice(upperBinId, binStep) : 0;
         const strategy = detectStrategy(lowerBinId, upperBinId, activeBinId);
         const isOutOfRange = pool.outOfRange || false;
 
         // USD values come directly from the portfolio API
         // If multiple positions in same pool, split evenly (rare edge case)
         const count = positionPubkeys.length || 1;
-        const totalUsd      = parseFloat(pool.balances || 0) / count;
-        const pnlUsd        = parseFloat(pool.pnl || 0) / count;
-        const feesUsd       = parseFloat(pool.unclaimedFees || 0) / count;
+        const totalUsd      = parseFloat(pool.balancesSol || 0) / count;
+        const pnlUsd        = parseFloat(pool.pnlSol || 0) / count;
+        const feesUsd       = parseFloat(pool.unclaimedFeesSol || 0) / count;
         const pnlPct        = parseFloat(pool.pnlPctChange || 0);
 
         positions.push({
@@ -767,9 +768,10 @@ async function parseMeteoraPositions(positions) {
 // ═══════════════════════════════════════════════════════════════════
 function fmtPrice(n) {
   if (!n || isNaN(n)) return '—';
-  if (n >= 1000)  return n.toLocaleString('en', {maximumFractionDigits: 1});
-  if (n >= 1)     return n.toFixed(4);
-  if (n >= 0.001) return n.toFixed(6);
+  if (n >= 1000)      return n.toLocaleString('en', {maximumFractionDigits: 1});
+  if (n >= 1)         return n.toFixed(4);
+  if (n >= 0.0001)    return n.toFixed(7);
+  if (n >= 0.000001)  return n.toFixed(9);
   return n.toExponential(3);
 }
 
@@ -778,10 +780,17 @@ function fmtUSD(n) {
   return '$' + n.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 
+function fmtSOL(n) {
+  if (n === undefined || n === null || isNaN(n)) return '—';
+  const abs = Math.abs(n);
+  const decimals = abs >= 10 ? 3 : abs >= 1 ? 4 : abs >= 0.01 ? 5 : 6;
+  return n.toFixed(decimals) + ' SOL';
+}
+
 function fmtPnl(n) {
   if (!n || isNaN(n)) return '—';
   const sign = n >= 0 ? '+' : '';
-  return sign + fmtUSD(n);
+  return sign + fmtSOL(n);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -809,6 +818,7 @@ function renderCards(walletsData) {
     // Totals
     const totalVal  = positions.reduce((s, p) => s + (p.totalUsd || 0), 0);
     const totalPnl  = positions.reduce((s, p) => s + (p.pnlUsd || 0), 0);
+    const isSol = true;
     const pnlClass  = totalPnl >= 0 ? 'val-pos' : 'val-neg';
 
     const posRows = positions.length === 0
@@ -833,9 +843,9 @@ function renderCards(walletsData) {
                 </a>
               </div>
             </div>
-            <div class="cp-cell highlight">${fmtUSD(pos.totalUsd)}</div>
+            <div class="cp-cell highlight">${fmtSOL(pos.totalUsd)}</div>
             <div class="cp-cell ${pClass}">${fmtPnl(pos.pnlUsd)}<span style="font-size:9px;opacity:0.7">${pnlPctStr}</span></div>
-            <div class="cp-cell" style="color:var(--blue)">${fmtUSD(pos.feesUsd)}</div>
+            <div class="cp-cell" style="color:var(--blue)">${fmtSOL(pos.feesUsd)}</div>
           </div>`;
         }).join('');
 
@@ -843,19 +853,19 @@ function renderCards(walletsData) {
     <div class="wallet-card" style="animation-delay:${wi * 0.06}s">
       <div class="card-header">
         <div class="card-addr-row">
-          <div class="card-addr" title="${wallet.address}">${wallet.name || short}</div>
+          <div class="card-addr" title="${wallet.address}">${wallet.address}</div>
           <button class="card-copy" onclick="copyAddrBtn(this,'${wallet.address}')">copy</button>
         </div>
         <div class="card-totals">
-          <div class="card-total-val">${fmtUSD(totalVal)}</div>
+          <div class="card-total-val">${fmtSOL(totalVal)}</div>
           <div class="card-pnl ${pnlClass}">${fmtPnl(totalPnl)}</div>
         </div>
       </div>
       <div class="card-col-headers">
         <div class="cc-h" style="text-align:left">Pair + Strategy</div>
-        <div class="cc-h">Value</div>
-        <div class="cc-h">P&L</div>
-        <div class="cc-h">Fees</div>
+        <div class="cc-h">Value (SOL)</div>
+        <div class="cc-h">P&L (SOL)</div>
+        <div class="cc-h">Fees (SOL)</div>
       </div>
       ${posRows}
     </div>`;
@@ -899,7 +909,7 @@ function setCardLoading(walletAddress, walletName) {
     <div class="wallet-card" id="wcard_${walletAddress}">
       <div class="card-header">
         <div class="card-addr-row">
-          <div class="card-addr">${walletName || short}</div>
+          <div class="card-addr">${walletAddress}</div>
         </div>
         <div style="font-size:10px;color:var(--text3)">Loading…</div>
       </div>
@@ -955,7 +965,7 @@ async function refreshAll(silent = false) {
   const allPos = ordered.flatMap(r => r.positions);
   const totalVal = allPos.reduce((s, p) => s + (p.totalUsd || 0), 0);
   const totalPnl = allPos.reduce((s, p) => s + (p.pnlUsd || 0), 0);
-  document.getElementById('navTotalVal').textContent = fmtUSD(totalVal);
+  document.getElementById('navTotalVal').textContent = fmtSOL(totalVal);
   document.getElementById('navTotalPnl').textContent = fmtPnl(totalPnl);
   document.getElementById('navTotalPnl').className = 'nav-stat-val ' + (totalPnl >= 0 ? 'val-pos' : 'val-neg');
   document.getElementById('navWallets').textContent = wallets.length;
@@ -1011,7 +1021,7 @@ function validateInput() {
 function addWallet(addr, label) {
   const wallets = loadWallets();
   const address = (addr || document.getElementById('addrInput').value).trim();
-  const name = (label || document.getElementById('labelInput').value).trim() || `Wallet ${wallets.length + 1}`;
+  const name = (label || document.getElementById('labelInput').value).trim() || address;
   if (!isValidSolanaAddr(address)) { showToast('Invalid Solana address', 'error'); return; }
   if (wallets.find(w => w.address === address)) { showToast('Already tracked', 'error'); return; }
   wallets.push({ address, name, addedAt: Date.now() });
