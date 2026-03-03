@@ -154,28 +154,7 @@
 
   .cp-left { display: flex; flex-direction: column; gap: 4px; }
   .cp-pair { font-size: 14px; font-weight: 700; color: var(--text); }
-  .cp-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-
-  /* PRICE RANGE */
-  .cp-range {
-    font-size: 11px;
-    color: var(--text2);
-    letter-spacing: 0.2px;
-    line-height: 1.4;
-    display: flex; align-items: center; gap: 4px;
-  }
-  .cp-range-val { color: var(--text); font-weight: 500; }
-  .cp-range-sep { color: var(--text3); }
-  .cp-range-token {
-    color: var(--text3);
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .cp-range-loading {
-    font-size: 10px; color: var(--text3);
-    font-style: italic;
-  }
+  .cp-meta { display: flex; align-items: center; gap: 5px; }
 
   /* METEORA LINK BUTTON */
   .meteora-link {
@@ -192,6 +171,13 @@
     border-color: rgba(0,180,255,0.5);
     background: rgba(0,180,255,0.12);
     transform: translateY(-1px);
+  }
+  .meteora-logo {
+    width: 12px; height: 12px;
+    border-radius: 2px;
+    object-fit: contain;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
   }
   .meteora-link-text {
     font-size: 8px; font-weight: 600;
@@ -228,6 +214,18 @@
     width: 5px; height: 5px; border-radius: 50%;
     background: currentColor;
     opacity: 0.8;
+  }
+
+  .cp-range {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.2px;
+    line-height: 1.2;
+  }
+  .cp-range-token {
+    color: var(--text3);
+    font-size: 9px;
+    opacity: 0.7;
   }
 
   .cp-cell {
@@ -465,6 +463,34 @@
     color: var(--text3); font-size: 11px; line-height: 1.8;
   }
   .drawer-empty-icon { font-size: 28px; margin-bottom: 10px; opacity: 0.4; }
+
+  /* CLOSED POSITIONS SECTION */
+  .closed-section { border-top: 1px solid var(--border); }
+  .closed-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 14px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .closed-header-label {
+    font-size: 9px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
+  }
+  .closed-header-line { flex: 1; height: 1px; background: var(--border); }
+  .closed-pos-row {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) 100px 88px 70px;
+    padding: 6px 14px;
+    border-bottom: 1px solid var(--border)33;
+    align-items: center;
+    opacity: 0.75;
+    transition: opacity 0.1s;
+  }
+  .closed-pos-row:last-child { border-bottom: none; }
+  .closed-pos-row:hover { opacity: 1; }
+  .cp-closed-pair { font-size: 12px; font-weight: 600; color: var(--text2); }
+  .cp-closed-date { font-size: 9px; color: var(--text3); margin-top: 2px; }
+  .cp-closed-cell { font-size: 11px; color: var(--text3); text-align: right; }
 </style>
 </head>
 <body>
@@ -550,8 +576,11 @@
 // ═══════════════════════════════════════════════════════════════════
 const STORAGE_KEY      = 'lp_tracker_wallets';
 const HELIUS_KEY_STORE = 'lp_tracker_helius_key';
-const REFRESH_INTERVAL = 5 * 60 * 1000;
+const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
+// ═══════════════════════════════════════════════════════════════════
+// METEORA DLMM PROGRAM ID
+// ═══════════════════════════════════════════════════════════════════
 const METEORA_DLMM_PROGRAM = 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -571,7 +600,7 @@ function getHeliosKey() { return localStorage.getItem(HELIUS_KEY_STORE) || ''; }
 function saveHeliusKey(k) { localStorage.setItem(HELIUS_KEY_STORE, k.trim()); }
 
 // ═══════════════════════════════════════════════════════════════════
-// SETUP SCREEN
+// SETUP SCREEN — shown on first load if no API key
 // ═══════════════════════════════════════════════════════════════════
 function showSetupScreen() {
   const main = document.getElementById('mainContent');
@@ -604,7 +633,7 @@ function saveKeyAndStart() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// HELIUS RPC CALL (kept for future use)
+// HELIUS RPC CALL
 // ═══════════════════════════════════════════════════════════════════
 async function rpcCall(method, params) {
   const key = getHeliosKey();
@@ -628,25 +657,21 @@ function detectStrategy(lowerBinId, upperBinId, activeBinId) {
   const activeOffset = activeBinId - lowerBinId;
   const relPos = activeOffset / (totalBins - 1);
   if (activeBinId < lowerBinId || activeBinId > upperBinId) return 'spot';
-  if (totalBins <= 10) return 'bidask';
+  const rangeWidth = totalBins;
+  if (rangeWidth <= 10) return 'bidask';
   if (relPos > 0.3 && relPos < 0.7) return 'curve';
   return 'spot';
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// BIN ID → PRICE (decimal-adjusted)
+// BIN ID → PRICE
 // ═══════════════════════════════════════════════════════════════════
-function binIdToPrice(binId, binStep, decimalsX, decimalsY) {
-  // Raw price from DLMM bin math: price = (1 + binStep/10000)^binId
-  const rawPrice = Math.pow(1 + binStep / 10000, binId);
-  // Adjust for token decimals to get human-readable price
-  // e.g. SOL(9) / USDC(6) needs * 10^(9-6) = * 1000
-  const decimalAdj = Math.pow(10, (decimalsX || 9) - (decimalsY || 9));
-  return rawPrice * decimalAdj;
+function binIdToPrice(binId, binStep) {
+  return Math.pow(1 + binStep / 10000, binId);
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// FETCH PAIR INFO (pool-level: bin_step, active_bin_id, current_price)
+// FETCH PAIR INFO
 // ═══════════════════════════════════════════════════════════════════
 const pairCache = {};
 async function fetchPairInfo(pairAddress) {
@@ -661,84 +686,78 @@ async function fetchPairInfo(pairAddress) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// FETCH POSITION BIN RANGE from Meteora positions API
-// Returns { lowerBinId, upperBinId } or null
-// ═══════════════════════════════════════════════════════════════════
-async function fetchPositionBinRange(positionPubkey) {
-  try {
-    const res = await fetch(`https://dlmm-api.meteora.ag/position/${positionPubkey}`);
-    if (!res.ok) return null;
-    const d = await res.json();
-
-    // The API may return fields in various shapes — cover them all
-    let lower = d?.lower_bin_id ?? d?.lowerBinId ?? d?.data?.lowerBinId ?? null;
-    let upper = d?.upper_bin_id ?? d?.upperBinId ?? d?.data?.upperBinId ?? null;
-
-    // Some endpoints return a position_bin_data array — derive range from it
-    if ((lower === null || upper === null) && Array.isArray(d?.position_bin_data) && d.position_bin_data.length) {
-      const ids = d.position_bin_data.map(b => b.bin_id).filter(v => v != null);
-      if (ids.length) { lower = Math.min(...ids); upper = Math.max(...ids); }
-    }
-
-    if (lower !== null && upper !== null) return { lowerBinId: lower, upperBinId: upper };
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
 // MAIN FETCH
 // ═══════════════════════════════════════════════════════════════════
 async function fetchWalletPositions(walletAddress) {
-  const res = await fetch(
-    `https://dlmm.datapi.meteora.ag/portfolio/open?user=${walletAddress}`
-  );
-  if (!res.ok) throw new Error(`Portfolio API error: ${res.status}`);
-  const data = await res.json();
+  // Fetch open positions and closed history in parallel
+  const [openRes, closedRes] = await Promise.all([
+    fetch(`https://dlmm.datapi.meteora.ag/portfolio/open?user=${walletAddress}`),
+    fetch(`https://dlmm.datapi.meteora.ag/portfolio?user=${walletAddress}&pageSize=20`),
+  ]);
+  if (!openRes.ok) throw new Error(`Portfolio API error: ${openRes.status}`);
+  const data = await openRes.json();
+
+  // Extract last 3 closed positions from the history endpoint
+  let closedPositions = [];
+  if (closedRes.ok) {
+    try {
+      const closedData = await closedRes.json();
+      closedPositions = (closedData.pools || [])
+        .filter(p => p.lastClosedAt)
+        .sort((a, b) => b.lastClosedAt - a.lastClosedAt)
+        .slice(0, 3)
+        .map(p => ({
+          pairName:    `${p.tokenX}/${p.tokenY}`,
+          poolAddress: p.poolAddress,
+          closedAt:    p.lastClosedAt,
+          pnlSol:      parseFloat(p.pnlSol || 0),
+          pnlPct:      parseFloat(p.pnlPctChange || 0),
+          totalFeesSol:parseFloat(p.totalFeeSol || 0),
+          totalDepositSol: parseFloat(p.totalDepositSol || 0),
+          totalWithdrawalSol: parseFloat(p.totalWithdrawalSol || 0),
+        }));
+    } catch(e) { console.warn('closed positions parse error', e); }
+  }
 
   const pools = data.pools || [];
-  console.log(`[${walletAddress.slice(0,6)}] found ${pools.length} pools`);
+  console.log(`[${walletAddress.slice(0,6)}] found ${pools.length} pools, ${data.total?.balances ? '$'+parseFloat(data.total.balances).toFixed(2) : ''}`);
 
   const positions = [];
-
-  const SOL_MINT  = 'So11111111111111111111111111111111111111112';
-  const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-  const USDT_MINT = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
+  const solPrice = parseFloat(data.solPrice || 0);
 
   for (const pool of pools) {
     try {
       const positionPubkeys = pool.listPositions || [];
       const pair = await fetchPairInfo(pool.poolAddress);
-      const binStep = pair?.bin_step ?? 1;
+      const binStep = pair?.bin_step || 1;
 
-      // Token decimal precision
+      const SOL_MINT  = 'So11111111111111111111111111111111111111112';
+      const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+      const USDT_MINT = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
       const decimalsX = pool.tokenXMint === SOL_MINT ? 9
-                      : (pool.tokenXMint === USDC_MINT || pool.tokenXMint === USDT_MINT) ? 6 : 9;
+                      : (pool.tokenXMint === USDC_MINT || pool.tokenXMint === USDT_MINT) ? 6 : 6;
       const decimalsY = pool.tokenYMint === SOL_MINT ? 9
-                      : (pool.tokenYMint === USDC_MINT || pool.tokenYMint === USDT_MINT) ? 6 : 9;
+                      : (pool.tokenYMint === USDC_MINT || pool.tokenYMint === USDT_MINT) ? 6 : 6;
 
-      // Active bin: use API field if available, else compute from current_price
-      let activeBinId = pair?.active_bin_id ?? 0;
-      if (!activeBinId && pair?.current_price && binStep) {
-        activeBinId = Math.round(Math.log(pair.current_price) / Math.log(1 + binStep / 10000));
-      }
+      for (const posPubkey of positionPubkeys) {
+        let lowerBinId = 0, upperBinId = 0;
+        try {
+          const acct = await rpcCall('getAccountInfo', [posPubkey, { encoding: 'base64' }]);
+          if (acct?.value?.data?.[0]) {
+            const data = Uint8Array.from(atob(acct.value.data[0]), c => c.charCodeAt(0));
+            const view = new DataView(data.buffer);
+            lowerBinId = view.getInt32(72, true);
+            upperBinId = view.getInt32(76, true);
+          }
+        } catch(e) { /* use 0,0 fallback */ }
 
-      // Fetch all position bin ranges in parallel
-      const binRanges = await Promise.all(
-        positionPubkeys.map(pk => fetchPositionBinRange(pk))
-      );
+        let activeBinId = 0;
+        if (pair?.current_price && binStep) {
+          activeBinId = Math.round(Math.log(pair.current_price) / Math.log(1 + binStep / 10000));
+        }
 
-      for (let i = 0; i < positionPubkeys.length; i++) {
-        const posPubkey = positionPubkeys[i];
-        const binRange = binRanges[i];
-
-        // Use per-position bin range from API; fall back to pool-level minBinId/maxBinId
-        let lowerBinId = binRange?.lowerBinId ?? pool.minBinId ?? 0;
-        let upperBinId = binRange?.upperBinId ?? pool.maxBinId ?? 0;
-
-        const minPrice = (lowerBinId !== 0) ? binIdToPrice(lowerBinId, binStep, decimalsX, decimalsY) : 0;
-        const maxPrice = (upperBinId !== 0) ? binIdToPrice(upperBinId, binStep, decimalsX, decimalsY) : 0;
+        const minPrice = lowerBinId ? binIdToPrice(lowerBinId, binStep) : 0;
+        const maxPrice = upperBinId ? binIdToPrice(upperBinId, binStep) : 0;
         const strategy = detectStrategy(lowerBinId, upperBinId, activeBinId);
         const isOutOfRange = pool.outOfRange || false;
 
@@ -752,15 +771,9 @@ async function fetchWalletPositions(walletAddress) {
           positionAddress: posPubkey,
           poolAddress:     pool.poolAddress,
           pairName:        `${pool.tokenX}/${pool.tokenY}`,
-          tokenX:          pool.tokenX,
-          tokenY:          pool.tokenY,
           quoteSymbol:     pool.tokenY,
           minPrice,
           maxPrice,
-          currentPrice:    pair?.current_price ?? 0,
-          lowerBinId,
-          upperBinId,
-          activeBinId,
           totalUsd,
           pnlUsd,
           feesUsd,
@@ -774,24 +787,23 @@ async function fetchWalletPositions(walletAddress) {
     }
   }
 
-  return positions;
+  return { positions, closedPositions };
 }
 
-async function parseMeteoraPositions(positions) {
-  return positions || [];
+// Compatibility shim
+async function parseMeteoraPositions(data) {
+  return data?.positions || data || [];
 }
 
 // ═══════════════════════════════════════════════════════════════════
 // FORMAT HELPERS
 // ═══════════════════════════════════════════════════════════════════
 function fmtPrice(n) {
-  if (n === null || n === undefined || isNaN(n) || n === 0) return '—';
-  if (n >= 10000)    return n.toLocaleString('en', {maximumFractionDigits: 0});
-  if (n >= 1000)     return n.toLocaleString('en', {maximumFractionDigits: 1});
-  if (n >= 100)      return n.toFixed(2);
-  if (n >= 1)        return n.toFixed(4);
-  if (n >= 0.0001)   return n.toFixed(6);
-  if (n >= 0.000001) return n.toFixed(9);
+  if (!n || isNaN(n)) return '—';
+  if (n >= 1000)      return n.toLocaleString('en', {maximumFractionDigits: 1});
+  if (n >= 1)         return n.toFixed(4);
+  if (n >= 0.0001)    return n.toFixed(7);
+  if (n >= 0.000001)  return n.toFixed(9);
   return n.toExponential(3);
 }
 
@@ -814,7 +826,7 @@ function fmtPnl(n) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RENDER CARDS
+// RENDER CARDS FROM LIVE DATA
 // ═══════════════════════════════════════════════════════════════════
 function renderCards(walletsData) {
   const grid = document.getElementById('cardsGrid');
@@ -830,23 +842,18 @@ function renderCards(walletsData) {
 
   const METEORA_SVG = `<svg class="m-svg" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0d1117"/><path d="M8 20L16 8L24 20H8Z" fill="#00b4ff" opacity="0.9"/><path d="M11 20L16 13L21 20H11Z" fill="#00e676" opacity="0.8"/></svg>`;
 
+  // Masonry: 3 columns, distribute wallets top-to-bottom
   const cols = [[], [], []];
   walletsData.forEach((wd, i) => cols[i % 3].push({ wd, wi: i }));
-
   grid.innerHTML = cols.map(col =>
     `<div class="masonry-col">${col.map(({wd, wi}) => {
       const wallet = wd.wallet;
       const positions = wd.positions || [];
       const short = wallet.address.slice(0,4) + '…' + wallet.address.slice(-4);
-      const label = wallet.name && wallet.name !== wallet.address ? wallet.name : short;
 
       const totalVal = positions.reduce((s, p) => s + (p.totalUsd || 0), 0);
       const totalPnl = positions.reduce((s, p) => s + (p.pnlUsd || 0), 0);
       const pnlClass = totalPnl >= 0 ? 'val-pos' : 'val-neg';
-
-      const errorBanner = wd.error
-        ? `<div style="padding:8px 14px;font-size:10px;color:var(--red);background:var(--red-dim);border-bottom:1px solid var(--red)22;">⚠ ${wd.error}</div>`
-        : '';
 
       const posRows = positions.length === 0
         ? `<div style="padding:16px 14px;font-size:11px;color:var(--text3);text-align:center;">No active DLMM positions</div>`
@@ -856,28 +863,12 @@ function renderCards(walletsData) {
             const pClass = (pos.pnlUsd || 0) >= 0 ? 'val-pos' : 'val-neg';
             const poolUrl = `https://app.meteora.ag/dlmm/${pos.poolAddress}`;
             const pnlPctStr = pos.pnlPct ? ` (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : '';
-            const oorTag = pos.isOutOfRange
-              ? `<span style="font-size:9px;padding:2px 5px;border-radius:3px;background:var(--red-dim);color:var(--red);border:1px solid var(--red)33;font-weight:700;letter-spacing:0.3px;">OUT OF RANGE</span>`
-              : '';
-
-            // Price range display — show '—' if both are zero (API returned nothing)
-            let rangeHtml;
-            if (pos.minPrice && pos.maxPrice) {
-              rangeHtml = `<div class="cp-range">
-                <span class="cp-range-val">${fmtPrice(pos.minPrice)}</span>
-                <span class="cp-range-sep">–</span>
-                <span class="cp-range-val">${fmtPrice(pos.maxPrice)}</span>
-                <span class="cp-range-token">${pos.quoteSymbol}</span>
-              </div>`;
-            } else {
-              rangeHtml = `<div class="cp-range"><span style="color:var(--text3);font-size:10px;">range unavailable</span></div>`;
-            }
-
+            const oorTag = pos.isOutOfRange ? `<span style="font-size:9px;padding:2px 5px;border-radius:3px;background:var(--red-dim);color:var(--red);border:1px solid var(--red)33;font-weight:700;letter-spacing:0.3px;">OUT OF RANGE</span>` : '';
             return `
             <div class="card-pos-row">
               <div class="cp-left">
                 <div class="cp-pair">${pos.pairName}</div>
-                ${rangeHtml}
+                <div class="cp-range">${fmtPrice(pos.minPrice)} – ${fmtPrice(pos.maxPrice)} <span class="cp-range-token">${pos.quoteSymbol}</span></div>
                 <div class="cp-meta">
                   <span class="strategy-tag ${stratClass}"><span class="strat-dot"></span>${stratLabel}</span>
                   ${oorTag}
@@ -892,6 +883,42 @@ function renderCards(walletsData) {
             </div>`;
           }).join('');
 
+      // Closed positions section
+      const closed = wd.closedPositions || [];
+      const closedSection = closed.length === 0 ? '' : `
+        <div class="closed-section">
+          <div class="closed-header">
+            <div class="closed-header-label">Recent Closed</div>
+            <div class="closed-header-line"></div>
+          </div>
+          <div style="background:var(--bg)">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 100px 88px 70px;padding:3px 14px;border-bottom:1px solid var(--border)">
+              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px">Pair</div>
+              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;text-align:right">P&L (SOL)</div>
+              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;text-align:right">Fees (SOL)</div>
+              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;text-align:right">Closed</div>
+            </div>
+            ${closed.map(cp => {
+              const pnlCls = cp.pnlSol >= 0 ? 'val-pos' : 'val-neg';
+              const pct = cp.pnlPct ? ` (${cp.pnlPct>=0?'+':''}${cp.pnlPct.toFixed(1)}%)` : '';
+              const daysAgo = Math.floor((Date.now()/1000 - cp.closedAt) / 86400);
+              const dateStr = daysAgo === 0 ? 'today' : daysAgo === 1 ? '1d ago' : daysAgo + 'd ago';
+              return `<div class="closed-pos-row">
+                <div>
+                  <div class="cp-closed-pair">${cp.pairName}</div>
+                </div>
+                <div class="cp-closed-cell ${pnlCls}">${fmtPnl(cp.pnlSol)}<span style="font-size:9px;opacity:.7">${pct}</span></div>
+                <div class="cp-closed-cell" style="color:var(--blue)">${fmtSOL(cp.totalFeesSol)}</div>
+                <div class="cp-closed-cell">${dateStr}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+
+      const label = (wallet.name && wallet.name !== wallet.address)
+        ? wallet.name
+        : wallet.address.slice(0,4) + '…' + wallet.address.slice(-4);
+
       return `
       <div class="wallet-card" style="animation-delay:${wi * 0.06}s">
         <div class="card-header">
@@ -904,7 +931,6 @@ function renderCards(walletsData) {
             <div class="card-pnl ${pnlClass}">${fmtPnl(totalPnl)}</div>
           </div>
         </div>
-        ${errorBanner}
         <div class="card-col-headers">
           <div class="cc-h" style="text-align:left">Pair + Strategy</div>
           <div class="cc-h">Value (SOL)</div>
@@ -912,6 +938,7 @@ function renderCards(walletsData) {
           <div class="cc-h">Fees (SOL)</div>
         </div>
         ${posRows}
+        ${closedSection}
       </div>`;
     }).join('')}</div>`
   ).join('');
@@ -923,14 +950,11 @@ function renderCards(walletsData) {
 function setCardLoading(walletAddress, walletName) {
   const grid = document.getElementById('cardsGrid');
   const existing = document.getElementById('wcard_' + walletAddress);
-  const label = walletName && walletName !== walletAddress
-    ? walletName
-    : walletAddress.slice(0,4) + '…' + walletAddress.slice(-4);
   const loadHtml = `
     <div class="wallet-card" id="wcard_${walletAddress}">
       <div class="card-header">
         <div class="card-addr-row">
-          <div class="card-addr">${label}</div>
+          <div class="card-addr">${walletAddress}</div>
         </div>
         <div style="font-size:10px;color:var(--text3)">Loading…</div>
       </div>
@@ -951,7 +975,10 @@ let countdownTimer = null;
 
 async function refreshAll(silent = false) {
   const wallets = loadWallets();
-  if (!wallets.length) { renderCards([]); return; }
+  if (!wallets.length) {
+    renderCards([]);
+    return;
+  }
 
   if (!silent) updateRefreshBtn('Refreshing…', true);
 
@@ -960,14 +987,16 @@ async function refreshAll(silent = false) {
   wallets.forEach(w => setCardLoading(w.address, w.name));
 
   const results = [];
+
   await Promise.all(wallets.map(async (wallet) => {
     try {
       const raw = await fetchWalletPositions(wallet.address);
       const positions = await parseMeteoraPositions(raw);
-      results.push({ wallet, positions, error: null });
+      const closedPositions = raw?.closedPositions || [];
+      results.push({ wallet, positions, closedPositions, error: null });
     } catch(e) {
       console.error(`Error fetching ${wallet.address}:`, e);
-      results.push({ wallet, positions: [], error: e.message });
+      results.push({ wallet, positions: [], closedPositions: [], error: e.message });
     }
   }));
 
@@ -991,7 +1020,9 @@ function scheduleNextRefresh() {
   clearTimeout(refreshTimer);
   clearInterval(countdownTimer);
   nextRefreshAt = Date.now() + REFRESH_INTERVAL;
+
   refreshTimer = setTimeout(() => refreshAll(true), REFRESH_INTERVAL);
+
   countdownTimer = setInterval(() => {
     const remaining = Math.max(0, nextRefreshAt - Date.now());
     const m = Math.floor(remaining / 60000);
@@ -1124,6 +1155,9 @@ function clearAllWallets() {
   showToast('Cleared', '');
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// FIX: renderWalletList — corrected join/template syntax
+// ═══════════════════════════════════════════════════════════════════
 function renderWalletList() {
   const wallets = loadWallets();
   document.getElementById('walletCount').textContent = wallets.length;
@@ -1166,7 +1200,7 @@ function openSettings() {
           <button class="drawer-add-btn" onclick="updateKey()">Save</button>
         </div>
         <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Auto-refresh</div>
-        <div style="font-size:11px;color:var(--text2);margin-bottom:16px;">Every 5 minutes</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:16px;">Every 5 minutes (hardcoded, adjustable in future)</div>
         <button onclick="closeSettings()" style="width:100%;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;">Close</button>
       </div>
     </div>`;
