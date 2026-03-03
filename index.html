@@ -178,7 +178,6 @@
     object-fit: contain;
     display: flex; align-items: center; justify-content: center;
     font-size: 9px;
-    /* SVG inline logo */
   }
   .meteora-link-text {
     font-size: 8px; font-weight: 600;
@@ -606,7 +605,7 @@ function saveKeyAndStart() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// HELIUS RPC CALL (still used for getProgramAccounts to get position pubkeys)
+// HELIUS RPC CALL
 // ═══════════════════════════════════════════════════════════════════
 async function rpcCall(method, params) {
   const key = getHeliosKey();
@@ -622,26 +621,17 @@ async function rpcCall(method, params) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// STRATEGY DETECTION — from bin liquidity distribution
-// Uses position account lower/upper bin IDs and the pool's active bin
-// to detect if liquidity is spread (Spot), at edges (Bid-Ask), or center (Curve)
+// STRATEGY DETECTION
 // ═══════════════════════════════════════════════════════════════════
 function detectStrategy(lowerBinId, upperBinId, activeBinId) {
   const totalBins = upperBinId - lowerBinId + 1;
   if (totalBins <= 1) return 'spot';
-
-  // Where is the active bin relative to the position range?
   const activeOffset = activeBinId - lowerBinId;
-  const relPos = activeOffset / (totalBins - 1); // 0=bottom, 0.5=center, 1=top
-
-  // If active bin is outside the range — position is out of range, treat as spot
+  const relPos = activeOffset / (totalBins - 1);
   if (activeBinId < lowerBinId || activeBinId > upperBinId) return 'spot';
-
-  // Narrow range = likely Bid-Ask (concentrated at edges)
-  // Wide range centered on active = Curve or Spot
   const rangeWidth = totalBins;
-  if (rangeWidth <= 10) return 'bidask';  // very tight range
-  if (relPos > 0.3 && relPos < 0.7) return 'curve';  // active bin near center
+  if (rangeWidth <= 10) return 'bidask';
+  if (relPos > 0.3 && relPos < 0.7) return 'curve';
   return 'spot';
 }
 
@@ -649,13 +639,11 @@ function detectStrategy(lowerBinId, upperBinId, activeBinId) {
 // BIN ID → PRICE
 // ═══════════════════════════════════════════════════════════════════
 function binIdToPrice(binId, binStep) {
-  // Meteora pair API returns current_price already in human-readable scale
-  // so we just use the raw formula without decimal adjustment
   return Math.pow(1 + binStep / 10000, binId);
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// FETCH PAIR INFO from Meteora old API (for bin_step + decimals + active bin)
+// FETCH PAIR INFO
 // ═══════════════════════════════════════════════════════════════════
 const pairCache = {};
 async function fetchPairInfo(pairAddress) {
@@ -670,8 +658,7 @@ async function fetchPairInfo(pairAddress) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MAIN FETCH — uses dlmm.datapi.meteora.ag/portfolio/open
-// Returns balances, PnL, fees, token names all in one call
+// MAIN FETCH
 // ═══════════════════════════════════════════════════════════════════
 async function fetchWalletPositions(walletAddress) {
   const res = await fetch(
@@ -688,15 +675,10 @@ async function fetchWalletPositions(walletAddress) {
 
   for (const pool of pools) {
     try {
-      // Get position-level detail — each pool can have multiple positions
-      // but listPositions gives us pubkeys for per-position data
       const positionPubkeys = pool.listPositions || [];
-
-      // Fetch pair info for bin_step + current_price (for price range + strategy)
       const pair = await fetchPairInfo(pool.poolAddress);
       const binStep = pair?.bin_step || 1;
 
-      // Token decimals
       const SOL_MINT  = 'So11111111111111111111111111111111111111112';
       const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
       const USDT_MINT = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
@@ -705,9 +687,7 @@ async function fetchWalletPositions(walletAddress) {
       const decimalsY = pool.tokenYMint === SOL_MINT ? 9
                       : (pool.tokenYMint === USDC_MINT || pool.tokenYMint === USDT_MINT) ? 6 : 6;
 
-      // For each position pubkey, fetch bin details for price range + strategy
       for (const posPubkey of positionPubkeys) {
-        // Fetch position account from Helius for bin IDs
         let lowerBinId = 0, upperBinId = 0;
         try {
           const acct = await rpcCall('getAccountInfo', [posPubkey, { encoding: 'base64' }]);
@@ -719,7 +699,6 @@ async function fetchWalletPositions(walletAddress) {
           }
         } catch(e) { /* use 0,0 fallback */ }
 
-        // Active bin from pair current_price
         let activeBinId = 0;
         if (pair?.current_price && binStep) {
           activeBinId = Math.round(Math.log(pair.current_price) / Math.log(1 + binStep / 10000));
@@ -730,13 +709,11 @@ async function fetchWalletPositions(walletAddress) {
         const strategy = detectStrategy(lowerBinId, upperBinId, activeBinId);
         const isOutOfRange = pool.outOfRange || false;
 
-        // USD values come directly from the portfolio API
-        // If multiple positions in same pool, split evenly (rare edge case)
         const count = positionPubkeys.length || 1;
-        const totalUsd      = parseFloat(pool.balancesSol || 0) / count;
-        const pnlUsd        = parseFloat(pool.pnlSol || 0) / count;
-        const feesUsd       = parseFloat(pool.unclaimedFeesSol || 0) / count;
-        const pnlPct        = parseFloat(pool.pnlPctChange || 0);
+        const totalUsd = parseFloat(pool.balancesSol || 0) / count;
+        const pnlUsd   = parseFloat(pool.pnlSol || 0) / count;
+        const feesUsd  = parseFloat(pool.unclaimedFeesSol || 0) / count;
+        const pnlPct   = parseFloat(pool.pnlPctChange || 0);
 
         positions.push({
           positionAddress: posPubkey,
@@ -767,7 +744,7 @@ async function parseMeteoraPositions(positions) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// FORMAT PRICE — smart decimal formatting
+// FORMAT HELPERS
 // ═══════════════════════════════════════════════════════════════════
 function fmtPrice(n) {
   if (!n || isNaN(n)) return '—';
@@ -818,100 +795,71 @@ function renderCards(walletsData) {
   walletsData.forEach((wd, i) => cols[i % 3].push({ wd, wi: i }));
   grid.innerHTML = cols.map(col =>
     `<div class="masonry-col">${col.map(({wd, wi}) => {
-    const wallet = wd.wallet;
-    const positions = wd.positions || [];
-    const short = wallet.address.slice(0,4) + '…' + wallet.address.slice(-4);
+      const wallet = wd.wallet;
+      const positions = wd.positions || [];
+      const short = wallet.address.slice(0,4) + '…' + wallet.address.slice(-4);
 
-    // Totals
-    const totalVal  = positions.reduce((s, p) => s + (p.totalUsd || 0), 0);
-    const totalPnl  = positions.reduce((s, p) => s + (p.pnlUsd || 0), 0);
-    const isSol = true;
-    const pnlClass  = totalPnl >= 0 ? 'val-pos' : 'val-neg';
+      const totalVal = positions.reduce((s, p) => s + (p.totalUsd || 0), 0);
+      const totalPnl = positions.reduce((s, p) => s + (p.pnlUsd || 0), 0);
+      const pnlClass = totalPnl >= 0 ? 'val-pos' : 'val-neg';
 
-    const posRows = positions.length === 0
-      ? `<div style="padding:16px 14px;font-size:11px;color:var(--text3);text-align:center;">No active DLMM positions</div>`
-      : positions.map(pos => {
-          const stratClass = pos.strategy === 'bidask' ? 'strat-bidask' : pos.strategy === 'curve' ? 'strat-curve' : 'strat-spot';
-          const stratLabel = pos.strategy === 'bidask' ? 'Bid-Ask' : pos.strategy === 'curve' ? 'Curve' : 'Spot';
-          const pClass = (pos.pnlUsd || 0) >= 0 ? 'val-pos' : 'val-neg';
-          const poolUrl = `https://app.meteora.ag/dlmm/${pos.poolAddress}`;
-          const pnlPctStr = pos.pnlPct ? ` (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : '';
-          const oorTag = pos.isOutOfRange ? `<span style="font-size:9px;padding:2px 5px;border-radius:3px;background:var(--red-dim);color:var(--red);border:1px solid var(--red)33;font-weight:700;letter-spacing:0.3px;">OUT OF RANGE</span>` : '';
-          return `
-          <div class="card-pos-row">
-            <div class="cp-left">
-              <div class="cp-pair">${pos.pairName}</div>
-              <div class="cp-range">${fmtPrice(pos.minPrice)} – ${fmtPrice(pos.maxPrice)} <span class="cp-range-token">${pos.quoteSymbol}</span></div>
-              <div class="cp-meta">
-                <span class="strategy-tag ${stratClass}"><span class="strat-dot"></span>${stratLabel}</span>
-                ${oorTag}
-                <a class="meteora-link" href="${poolUrl}" target="_blank">
-                  ${METEORA_SVG}<span class="meteora-link-text">Pool</span>
-                </a>
+      const posRows = positions.length === 0
+        ? `<div style="padding:16px 14px;font-size:11px;color:var(--text3);text-align:center;">No active DLMM positions</div>`
+        : positions.map(pos => {
+            const stratClass = pos.strategy === 'bidask' ? 'strat-bidask' : pos.strategy === 'curve' ? 'strat-curve' : 'strat-spot';
+            const stratLabel = pos.strategy === 'bidask' ? 'Bid-Ask' : pos.strategy === 'curve' ? 'Curve' : 'Spot';
+            const pClass = (pos.pnlUsd || 0) >= 0 ? 'val-pos' : 'val-neg';
+            const poolUrl = `https://app.meteora.ag/dlmm/${pos.poolAddress}`;
+            const pnlPctStr = pos.pnlPct ? ` (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : '';
+            const oorTag = pos.isOutOfRange ? `<span style="font-size:9px;padding:2px 5px;border-radius:3px;background:var(--red-dim);color:var(--red);border:1px solid var(--red)33;font-weight:700;letter-spacing:0.3px;">OUT OF RANGE</span>` : '';
+            return `
+            <div class="card-pos-row">
+              <div class="cp-left">
+                <div class="cp-pair">${pos.pairName}</div>
+                <div class="cp-range">${fmtPrice(pos.minPrice)} – ${fmtPrice(pos.maxPrice)} <span class="cp-range-token">${pos.quoteSymbol}</span></div>
+                <div class="cp-meta">
+                  <span class="strategy-tag ${stratClass}"><span class="strat-dot"></span>${stratLabel}</span>
+                  ${oorTag}
+                  <a class="meteora-link" href="${poolUrl}" target="_blank">
+                    ${METEORA_SVG}<span class="meteora-link-text">Pool</span>
+                  </a>
+                </div>
               </div>
-            </div>
-            <div class="cp-cell highlight">${fmtSOL(pos.totalUsd)}</div>
-            <div class="cp-cell ${pClass}">${fmtPnl(pos.pnlUsd)}<span style="font-size:9px;opacity:0.7">${pnlPctStr}</span></div>
-            <div class="cp-cell" style="color:var(--blue)">${fmtSOL(pos.feesUsd)}</div>
-          </div>`;
-        }).join('');
+              <div class="cp-cell highlight">${fmtSOL(pos.totalUsd)}</div>
+              <div class="cp-cell ${pClass}">${fmtPnl(pos.pnlUsd)}<span style="font-size:9px;opacity:0.7">${pnlPctStr}</span></div>
+              <div class="cp-cell" style="color:var(--blue)">${fmtSOL(pos.feesUsd)}</div>
+            </div>`;
+          }).join('');
 
-    return `
-    <div class="wallet-card" style="animation-delay:${wi * 0.06}s">
-      <div class="card-header">
-        <div class="card-addr-row">
-          <div class="card-addr" title="${wallet.address}">${wallet.address}</div>
-          <button class="card-copy" onclick="copyAddrBtn(this,'${wallet.address}')">copy</button>
+      return `
+      <div class="wallet-card" style="animation-delay:${wi * 0.06}s">
+        <div class="card-header">
+          <div class="card-addr-row">
+            <div class="card-addr" title="${wallet.address}">${wallet.address}</div>
+            <button class="card-copy" onclick="copyAddrBtn(this,'${wallet.address}')">copy</button>
+          </div>
+          <div class="card-totals">
+            <div class="card-total-val">${fmtSOL(totalVal)}</div>
+            <div class="card-pnl ${pnlClass}">${fmtPnl(totalPnl)}</div>
+          </div>
         </div>
-        <div class="card-totals">
-          <div class="card-total-val">${fmtSOL(totalVal)}</div>
-          <div class="card-pnl ${pnlClass}">${fmtPnl(totalPnl)}</div>
+        <div class="card-col-headers">
+          <div class="cc-h" style="text-align:left">Pair + Strategy</div>
+          <div class="cc-h">Value (SOL)</div>
+          <div class="cc-h">P&L (SOL)</div>
+          <div class="cc-h">Fees (SOL)</div>
         </div>
-      </div>
-      <div class="card-col-headers">
-        <div class="cc-h" style="text-align:left">Pair + Strategy</div>
-        <div class="cc-h">Value (SOL)</div>
-        <div class="cc-h">P&L (SOL)</div>
-        <div class="cc-h">Fees (SOL)</div>
-      </div>
-      ${posRows}
-    </div>`;
+        ${posRows}
+      </div>`;
     }).join('')}</div>`
   ).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PARSE — convert Meteora /position/{address} response to normalized object
-// Response schema from dlmm-api.meteora.ag/position/{address}:
-// {
-//   address: string,
-//   pair_address: string,
-//   owner: string,
-//   lower_bin_id: number,
-//   upper_bin_id: number,
-//   total_x_amount: string,   // raw token amount
-//   total_y_amount: string,
-//   fee_x: string,
-//   fee_y: string,
-//   reward_one: string,
-//   reward_two: string,
-//   lb_pair: {
-//     address, name, mint_x, mint_y,
-//     bin_step: number,
-//     token_x: { symbol, decimals, amount, usd_amount },
-//     token_y: { symbol, decimals, amount, usd_amount },
-//     current_price: number,
-//     price_usd: number,
-//   },
-//   position_bin_data: [ { bin_id, price, position_liquidity, bin_liquidity } ]
-// }
-// ═══════════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════
 // LOADING STATE
 // ═══════════════════════════════════════════════════════════════════
 function setCardLoading(walletAddress, walletName) {
   const grid = document.getElementById('cardsGrid');
-  const short = walletAddress.slice(0,4) + '…' + walletAddress.slice(-4);
   const existing = document.getElementById('wcard_' + walletAddress);
   const loadHtml = `
     <div class="wallet-card" id="wcard_${walletAddress}">
@@ -930,7 +878,7 @@ function setCardLoading(walletAddress, walletName) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// REFRESH — fetch all wallets and re-render
+// REFRESH
 // ═══════════════════════════════════════════════════════════════════
 let refreshTimer = null;
 let nextRefreshAt = null;
@@ -946,14 +894,11 @@ async function refreshAll(silent = false) {
   if (!silent) updateRefreshBtn('Refreshing…', true);
 
   const grid = document.getElementById('cardsGrid');
-
-  // Show loading cards immediately
   grid.innerHTML = '';
   wallets.forEach(w => setCardLoading(w.address, w.name));
 
   const results = [];
 
-  // Fetch each wallet in parallel
   await Promise.all(wallets.map(async (wallet) => {
     try {
       const raw = await fetchWalletPositions(wallet.address);
@@ -965,11 +910,9 @@ async function refreshAll(silent = false) {
     }
   }));
 
-  // Render in original wallet order
   const ordered = wallets.map(w => results.find(r => r.wallet.address === w.address) || { wallet: w, positions: [] });
   renderCards(ordered);
 
-  // Update nav totals
   const allPos = ordered.flatMap(r => r.positions);
   const totalVal = allPos.reduce((s, p) => s + (p.totalUsd || 0), 0);
   const totalPnl = allPos.reduce((s, p) => s + (p.pnlUsd || 0), 0);
@@ -990,7 +933,6 @@ function scheduleNextRefresh() {
 
   refreshTimer = setTimeout(() => refreshAll(true), REFRESH_INTERVAL);
 
-  // Countdown in nav
   countdownTimer = setInterval(() => {
     const remaining = Math.max(0, nextRefreshAt - Date.now());
     const m = Math.floor(remaining / 60000);
@@ -1041,7 +983,6 @@ function addWallet(addr, label) {
     document.getElementById('addBtn').disabled = true;
   }
   showToast(`Added: ${name}`, 'success');
-  // Trigger refresh to include new wallet
   if (getHeliosKey()) refreshAll(true);
 }
 
@@ -1124,6 +1065,9 @@ function clearAllWallets() {
   showToast('Cleared', '');
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// FIX: renderWalletList — corrected join/template syntax
+// ═══════════════════════════════════════════════════════════════════
 function renderWalletList() {
   const wallets = loadWallets();
   document.getElementById('walletCount').textContent = wallets.length;
@@ -1146,12 +1090,11 @@ function renderWalletList() {
         <button class="wi-btn del" onclick="removeWallet('${w.address}')" title="Remove">✕</button>
       </div>
     </div>`;
-    }).join('')}</div>`
-  ).join('');
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SETTINGS — change API key
+// SETTINGS
 // ═══════════════════════════════════════════════════════════════════
 function openSettings() {
   const current = getHeliosKey();
