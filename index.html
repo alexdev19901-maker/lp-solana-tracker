@@ -744,6 +744,36 @@ function fmtTime(ts) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// CLOSED SECTION BUILDER
+// ═══════════════════════════════════════════════════════════════════
+function buildClosedSection(closedPositions) {
+  const closed = closedPositions || [];
+  if (!closed.length) return '';
+  const chStyle = 'font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px';
+  const rows = closed.map(function(cp) {
+    const pc = cp.pnlSol >= 0 ? 'val-pos' : 'val-neg';
+    const pct = cp.pnlPct ? ' (' + (cp.pnlPct >= 0 ? '+' : '') + cp.pnlPct.toFixed(1) + '%)' : '';
+    return '<div class="closed-pos-row">'
+      + '<div class="cp-closed-pair">' + cp.pairName + '</div>'
+      + '<div class="cp-closed-cell ' + pc + '">' + fmtPnl(cp.pnlSol) + '<span style="font-size:9px;opacity:.7">' + pct + '</span></div>'
+      + '<div class="cp-closed-cell" style="color:var(--blue)">' + fmtSOL(cp.totalFeesSol) + '</div>'
+      + '<div class="cp-closed-cell">' + fmtTime(cp.closedAt) + '</div>'
+      + '</div>';
+  }).join('');
+  return '<div class="closed-section">'
+    + '<div class="closed-header"><div class="closed-label">Recent Closed</div><div class="closed-line"></div></div>'
+    + '<div style="background:var(--bg)">'
+    + '<div class="closed-col-headers">'
+    + '<div style="' + chStyle + '">Pair</div>'
+    + '<div style="' + chStyle + ';text-align:right">P&L (SOL)</div>'
+    + '<div style="' + chStyle + ';text-align:right">Fees (SOL)</div>'
+    + '<div style="' + chStyle + ';text-align:right">Closed</div>'
+    + '</div>'
+    + rows
+    + '</div></div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // RENDER CARDS FROM LIVE DATA
 // ═══════════════════════════════════════════════════════════════════
 function renderCards(walletsData) {
@@ -814,31 +844,7 @@ function renderCards(walletsData) {
           <div class="cc-h">Fees (SOL)</div>
         </div>
         ${posRows}
-        ${(() => {
-          const closed = wd.closedPositions || [];
-          if (!closed.length) return '';
-          return `<div class="closed-section">
-          <div class="closed-header"><div class="closed-label">Recent Closed</div><div class="closed-line"></div></div>
-          <div style="background:var(--bg)">
-            <div class="closed-col-headers">
-              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px">Pair</div>
-              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;text-align:right">P&L (SOL)</div>
-              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;text-align:right">Fees (SOL)</div>
-              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;text-align:right">Closed</div>
-            </div>
-            ${closed.map(cp => {
-              const pc = cp.pnlSol >= 0 ? 'val-pos' : 'val-neg';
-              const pct = cp.pnlPct ? \` (\${cp.pnlPct>=0?'+':''}\${cp.pnlPct.toFixed(1)}%)\` : '';
-              return \`<div class="closed-pos-row">
-                <div class="cp-closed-pair">\${cp.pairName}</div>
-                <div class="cp-closed-cell \${pc}">\${fmtPnl(cp.pnlSol)}<span style="font-size:9px;opacity:.7">\${pct}</span></div>
-                <div class="cp-closed-cell" style="color:var(--blue)">\${fmtSOL(cp.totalFeesSol)}</div>
-                <div class="cp-closed-cell">\${fmtTime(cp.closedAt)}</div>
-              </div>\`;
-            }).join('')}
-          </div>
-        </div>\`;
-        })()}
+        ${buildClosedSection(wd.closedPositions)}
       </div>`;
     }).join('')}</div>`
   ).join('');
