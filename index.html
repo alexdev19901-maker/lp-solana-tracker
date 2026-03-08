@@ -449,6 +449,10 @@
   <div class="nav-sep"></div>
   <div class="nav-info">PROTOCOL <span>METEORA DLMM</span></div>
   <div class="nav-right">
+    <div class="nav-stat"><div class="nav-stat-val" id="navWallets">0</div><div class="nav-stat-label">Wallets</div></div>
+    <div class="nav-sep"></div>
+    <div class="nav-stat"><div class="nav-stat-val" id="navTotalVal">—</div><div class="nav-stat-label">Total Value</div></div>
+    <div class="nav-sep"></div>
     <div class="nav-stat"><div class="nav-stat-val" id="navTotalPnl">—</div><div class="nav-stat-label">P&L</div></div>
     <div class="nav-sep"></div>
     <div class="nav-stat" style="align-items:center;">
@@ -651,52 +655,41 @@ async function fetchWalletPositions(walletAddress) {
   for (const pool of pools) {
     try {
       const positionPubkeys = pool.listPositions || [];
-      const pair = await fetchPairInfo(pool.poolAddress);
-      const binStep = pair?.bin_step || 1;
 
-      const SOL_MINT  = 'So11111111111111111111111111111111111111112';
-      const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-      const USDT_MINT = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
-      const decimalsX = pool.tokenXMint === SOL_MINT ? 9
-                      : (pool.tokenXMint === USDC_MINT || pool.tokenXMint === USDT_MINT) ? 6 : 6;
-      const decimalsY = pool.tokenYMint === SOL_MINT ? 9
-                      : (pool.tokenYMint === USDC_MINT || pool.tokenYMint === USDT_MINT) ? 6 : 6;
+      // Pool-level totals from the API (already in SOL)
+      const poolBalanceSol = parseFloat(pool.balancesSol || 0);
+      const poolPnlSol     = parseFloat(pool.pnlSol || 0);
+      const poolFeesSol    = parseFloat(pool.unclaimedFeesSol || 0);
+      const poolPnlPct     = parseFloat(pool.pnlPctChange || 0);
+      const isOutOfRange   = pool.outOfRange || false;
+
+      // If only 1 position in pool, assign full pool totals
+      // If multiple, divide evenly (best approximation without on-chain per-position data)
+      const count = positionPubkeys.length || 1;
 
       for (const posPubkey of positionPubkeys) {
         let lowerBinId = 0, upperBinId = 0;
         try {
           const acct = await rpcCall('getAccountInfo', [posPubkey, { encoding: 'base64' }]);
           if (acct?.value?.data?.[0]) {
-            const data = Uint8Array.from(atob(acct.value.data[0]), c => c.charCodeAt(0));
-            const view = new DataView(data.buffer);
+            const raw = Uint8Array.from(atob(acct.value.data[0]), c => c.charCodeAt(0));
+            const view = new DataView(raw.buffer);
             lowerBinId = view.getInt32(72, true);
             upperBinId = view.getInt32(76, true);
           }
         } catch(e) { /* use 0,0 fallback */ }
-
-        let activeBinId = 0;
-        if (pair?.current_price && binStep) {
-          activeBinId = Math.round(Math.log(pair.current_price) / Math.log(1 + binStep / 10000));
-        }
-
-        const isOutOfRange = pool.outOfRange || false;
-
-        const count = positionPubkeys.length || 1;
-        const totalUsd = parseFloat(pool.balancesSol || 0) / count;
-        const pnlUsd   = parseFloat(pool.pnlSol || 0) / count;
-        const feesUsd  = parseFloat(pool.unclaimedFeesSol || 0) / count;
-        const pnlPct   = parseFloat(pool.pnlPctChange || 0);
 
         positions.push({
           positionAddress: posPubkey,
           poolAddress:     pool.poolAddress,
           pairName:        `${pool.tokenX}/${pool.tokenY}`,
           quoteSymbol:     pool.tokenY,
-          totalUsd,
-          pnlUsd,
-          feesUsd,
-          pnlPct,
+          valueSol:        poolBalanceSol / count,
+          pnlSol:          poolPnlSol / count,
+          feesSol:         poolFeesSol / count,
+          pnlPct:          poolPnlPct,
           isOutOfRange,
+          isPoolGroup:     count > 1,
         });
       }
     } catch(e) {
@@ -799,14 +792,14 @@ function renderCards(walletsData) {
       const positions = wd.positions || [];
       const short = wallet.address.slice(0,4) + '…' + wallet.address.slice(-4);
 
-      const totalVal = positions.reduce((s, p) => s + (p.totalUsd || 0), 0);
-      const totalPnl = positions.reduce((s, p) => s + (p.pnlUsd || 0), 0);
+      const totalVal = positions.reduce((s, p) => s + (p.valueSol || 0), 0);
+      const totalPnl = positions.reduce((s, p) => s + (p.pnlSol || 0), 0);
       const pnlClass = totalPnl >= 0 ? 'val-pos' : 'val-neg';
 
       const posRows = positions.length === 0
         ? `<div style="padding:16px 14px;font-size:11px;color:var(--text3);text-align:center;">No active DLMM positions</div>`
         : positions.map(pos => {
-            const pClass = (pos.pnlUsd || 0) >= 0 ? 'val-pos' : 'val-neg';
+            const pClass = (pos.pnlSol || 0) >= 0 ? 'val-pos' : 'val-neg';
             const poolUrl = `https://app.meteora.ag/dlmm/${pos.poolAddress}`;
             const pnlPctStr = pos.pnlPct ? ` (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : '';
             const oorTag = pos.isOutOfRange ? `<span style="font-size:9px;padding:2px 5px;border-radius:3px;background:var(--red-dim);color:var(--red);border:1px solid var(--red)33;font-weight:700;letter-spacing:0.3px;">OUT OF RANGE</span>` : '';
@@ -819,9 +812,9 @@ function renderCards(walletsData) {
                   ${oorTag}
                 </div>
               </div>
-              <div class="cp-cell highlight">${fmtSOL(pos.totalUsd)}</div>
-              <div class="cp-cell ${pClass}">${fmtPnl(pos.pnlUsd)}<span style="font-size:9px;opacity:0.7">${pnlPctStr}</span></div>
-              <div class="cp-cell" style="color:var(--blue)">${fmtSOL(pos.feesUsd)}</div>
+              <div class="cp-cell highlight">${fmtSOL(pos.valueSol)}</div>
+              <div class="cp-cell ${pClass}">${fmtPnl(pos.pnlSol)}<span style="font-size:9px;opacity:0.7">${pnlPctStr}</span></div>
+              <div class="cp-cell" style="color:var(--blue)">${fmtSOL(pos.feesSol)}</div>
             </div>`;
           }).join('');
 
@@ -910,8 +903,8 @@ async function refreshAll(silent = false) {
   renderCards(ordered);
 
   const allPos = ordered.flatMap(r => r.positions);
-  const totalVal = allPos.reduce((s, p) => s + (p.totalUsd || 0), 0);
-  const totalPnl = allPos.reduce((s, p) => s + (p.pnlUsd || 0), 0);
+  const totalVal = allPos.reduce((s, p) => s + (p.valueSol || 0), 0);
+  const totalPnl = allPos.reduce((s, p) => s + (p.pnlSol || 0), 0);
   document.getElementById('navTotalVal').textContent = fmtSOL(totalVal);
   document.getElementById('navTotalPnl').textContent = fmtPnl(totalPnl);
   document.getElementById('navTotalPnl').className = 'nav-stat-val ' + (totalPnl >= 0 ? 'val-pos' : 'val-neg');
