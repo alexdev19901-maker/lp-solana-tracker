@@ -538,98 +538,137 @@ function saveWallets(w) { localStorage.setItem(STORAGE_KEY, JSON.stringify(w)); 
 function isValidSolanaAddr(a) { return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a.trim()); }
 
 // ═══════════════════════════════════════════════════════════════════
-// HELIUS API KEY
+// SETUP — no API key needed, Meteora datapi is public
 // ═══════════════════════════════════════════════════════════════════
+
+// Legacy Helius key functions (kept for settings UI compatibility)
 function getHeliosKey() { return localStorage.getItem(HELIUS_KEY_STORE) || ''; }
 function saveHeliusKey(k) { localStorage.setItem(HELIUS_KEY_STORE, k.trim()); }
 
-// ═══════════════════════════════════════════════════════════════════
-// SETUP SCREEN — shown on first load if no API key
-// ═══════════════════════════════════════════════════════════════════
 function showSetupScreen() {
-  const main = document.getElementById('mainContent');
-  main.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:center;min-height:60vh;">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:36px 40px;max-width:480px;width:100%;">
-        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--green);margin-bottom:6px;">Welcome to LP Tracker</div>
-        <div style="font-size:11px;color:var(--text2);margin-bottom:24px;line-height:1.7;">
-          To fetch live Meteora positions you need a free Helius API key.<br>
-          Get one at <a href="https://helius.dev" target="_blank" style="color:var(--blue);text-decoration:none;">helius.dev</a> — takes 2 minutes.
-        </div>
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Helius API Key</div>
-        <div style="display:flex;gap:8px;">
-          <input id="setupKeyInput" class="drawer-input" style="flex:1;" placeholder="Paste your Helius API key..." />
-          <button class="drawer-add-btn" onclick="saveKeyAndStart()">Connect →</button>
-        </div>
-        <div style="margin-top:12px;font-size:10px;color:var(--text3);">
-          Your key is stored only in your browser's localStorage. It never leaves your device except to call Helius directly.
-        </div>
-      </div>
-    </div>`;
-}
-
-function saveKeyAndStart() {
-  const key = document.getElementById('setupKeyInput').value.trim();
-  if (!key) { showToast('Paste your API key first', 'error'); return; }
-  saveHeliusKey(key);
-  showToast('API key saved!', 'success');
+  // No setup needed — just start the app
   startApp();
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// HELIUS RPC CALL
-// ═══════════════════════════════════════════════════════════════════
-async function rpcCall(method, params) {
-  const key = getHeliosKey();
-  const res = await fetch(`https://mainnet.helius-rpc.com/?api-key=${key}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
-  });
-  if (!res.ok) throw new Error(`RPC error ${res.status}`);
-  const json = await res.json();
-  if (json.error) throw new Error(json.error.message);
-  return json.result;
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// BIN ID → PRICE
-// ═══════════════════════════════════════════════════════════════════
-function binIdToPrice(binId, binStep) {
-  return Math.pow(1 + binStep / 10000, binId);
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// FETCH PAIR INFO
-// ═══════════════════════════════════════════════════════════════════
-const pairCache = {};
-async function fetchPairInfo(pairAddress) {
-  if (pairCache[pairAddress]) return pairCache[pairAddress];
-  try {
-    const res = await fetch(`https://dlmm-api.meteora.ag/pair/${pairAddress}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    pairCache[pairAddress] = data;
-    return data;
-  } catch { return null; }
-}
 
 // ═══════════════════════════════════════════════════════════════════
 // MAIN FETCH
 // ═══════════════════════════════════════════════════════════════════
 async function fetchWalletPositions(walletAddress) {
-  const [openRes, closedRes] = await Promise.all([
-    fetch(`https://dlmm.datapi.meteora.ag/portfolio/open?user=${walletAddress}`),
-    fetch(`https://dlmm.datapi.meteora.ag/portfolio?user=${walletAddress}&pageSize=20`),
-  ]);
+  // 1) Fetch open portfolio (pool list)
+  const openRes = await fetch(`https://dlmm.datapi.meteora.ag/portfolio/open?user=${walletAddress}&page=1&page_size=20`);
   if (!openRes.ok) throw new Error(`Portfolio API error: ${openRes.status}`);
   const data = await openRes.json();
 
-  // Extract last 5 closed positions
-  let closedPositions = [];
-  if (closedRes.ok) {
+  const pools = data.pools || [];
+  const solPrice = parseFloat(data.solPrice || 0);
+  console.log(`[${walletAddress.slice(0,6)}] found ${pools.length} pools, SOL=$${solPrice.toFixed(2)}`);
+
+  // 2) For each pool, fetch per-position PnL data
+  const positions = [];
+
+  // Fetch all pool position PnLs in parallel
+  const poolPnlPromises = pools.map(pool =>
+    fetch(`https://dlmm.datapi.meteora.ag/positions/${pool.poolAddress}/pnl?user=${walletAddress}&status=open&page=1`)
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+  );
+  const poolPnlResults = await Promise.all(poolPnlPromises);
+
+  for (let i = 0; i < pools.length; i++) {
+    const pool = pools[i];
+    const pnlData = poolPnlResults[i];
+
     try {
+      if (pnlData && pnlData.positions && pnlData.positions.length > 0) {
+        // Use per-position data from the PnL API
+        for (const pos of pnlData.positions) {
+          const unr = pos.unrealizedPnl || {};
+          const fees = pos.allTimeFees || {};
+          const deposits = pos.allTimeDeposits || {};
+          const withdrawals = pos.allTimeWithdrawals || {};
+
+          // Unclaimed fees in SOL
+          const unclaimedFeeSolX = parseFloat(unr.unclaimedFeeTokenX?.amountSol || 0);
+          const unclaimedFeeSolY = parseFloat(unr.unclaimedFeeTokenY?.amountSol || 0);
+          const unclaimedFeesSol = unclaimedFeeSolX + unclaimedFeeSolY;
+
+          // All-time fees in SOL
+          const allTimeFeesSol = parseFloat(fees.total?.sol || 0);
+
+          positions.push({
+            positionAddress:   pos.positionAddress,
+            poolAddress:       pool.poolAddress,
+            pairName:          `${pool.tokenX}/${pool.tokenY}`,
+            tokenXIcon:        pool.tokenXIcon || '',
+            tokenYIcon:        pool.tokenYIcon || '',
+            quoteSymbol:       pool.tokenY,
+            // Balances
+            valueSol:          parseFloat(unr.balancesSol || 0),
+            valueUsd:          parseFloat(unr.balances || 0),
+            // PnL
+            pnlSol:            parseFloat(pos.pnlSol || 0),
+            pnlUsd:            parseFloat(pos.pnlUsd || 0),
+            pnlPct:            parseFloat(pos.pnlSolPctChange || 0),
+            pnlUsdPct:         parseFloat(pos.pnlPctChange || 0),
+            // Fees
+            unclaimedFeesSol,
+            allTimeFeesSol,
+            // Deposits & Withdrawals
+            totalDepositSol:   parseFloat(deposits.total?.sol || 0),
+            totalWithdrawalSol:parseFloat(withdrawals.total?.sol || 0),
+            // Range
+            isOutOfRange:      pos.isOutOfRange || false,
+            lowerBinId:        pos.lowerBinId || 0,
+            upperBinId:        pos.upperBinId || 0,
+            activeBinId:       pos.poolActiveBinId || 0,
+            minPrice:          parseFloat(pos.minPrice || 0),
+            maxPrice:          parseFloat(pos.maxPrice || 0),
+            activePrice:       parseFloat(pos.poolActivePrice || 0),
+            // Meta
+            createdAt:         pos.createdAt || 0,
+            feePerTvl24h:      parseFloat(pool.feePerTvl24h || 0),
+          });
+        }
+      } else {
+        // Fallback: use pool-level data if position PnL API fails
+        const count = (pool.listPositions || []).length || 1;
+        for (const posPubkey of (pool.listPositions || [])) {
+          positions.push({
+            positionAddress: posPubkey,
+            poolAddress:     pool.poolAddress,
+            pairName:        `${pool.tokenX}/${pool.tokenY}`,
+            tokenXIcon:      pool.tokenXIcon || '',
+            tokenYIcon:      pool.tokenYIcon || '',
+            quoteSymbol:     pool.tokenY,
+            valueSol:        parseFloat(pool.balancesSol || 0) / count,
+            valueUsd:        parseFloat(pool.balances || 0) / count,
+            pnlSol:          parseFloat(pool.pnlSol || 0) / count,
+            pnlUsd:          parseFloat(pool.pnl || 0) / count,
+            pnlPct:          parseFloat(pool.pnlSolPctChange || 0),
+            pnlUsdPct:       parseFloat(pool.pnlPctChange || 0),
+            unclaimedFeesSol:parseFloat(pool.unclaimedFeesSol || 0) / count,
+            allTimeFeesSol:  0,
+            totalDepositSol: parseFloat(pool.totalDepositSol || 0) / count,
+            totalWithdrawalSol: 0,
+            isOutOfRange:    pool.outOfRange || false,
+            lowerBinId: 0, upperBinId: 0, activeBinId: 0,
+            minPrice: 0, maxPrice: 0, activePrice: parseFloat(pool.poolPrice || 0),
+            createdAt: 0,
+            feePerTvl24h:    parseFloat(pool.feePerTvl24h || 0),
+          });
+        }
+      }
+    } catch(e) {
+      console.warn('Error processing pool:', pool.poolAddress, e);
+    }
+  }
+
+  // 3) Fetch closed positions from the general portfolio endpoint
+  let closedPositions = [];
+  try {
+    const closedRes = await fetch(`https://dlmm.datapi.meteora.ag/portfolio?user=${walletAddress}&pageSize=20`);
+    if (closedRes.ok) {
       const cd = await closedRes.json();
       closedPositions = (cd.pools || [])
         .filter(p => p.lastClosedAt)
@@ -640,64 +679,13 @@ async function fetchWalletPositions(walletAddress) {
           poolAddress:     p.poolAddress,
           closedAt:        p.lastClosedAt,
           pnlSol:          parseFloat(p.pnlSol || 0),
-          pnlPct:          parseFloat(p.pnlPctChange || 0),
+          pnlPct:          parseFloat(p.pnlSolPctChange || 0),
           totalFeesSol:    parseFloat(p.totalFeeSol || 0),
         }));
-    } catch(e) { console.warn('closed parse error', e); }
-  }
-
-  const pools = data.pools || [];
-  console.log(`[${walletAddress.slice(0,6)}] found ${pools.length} pools`);
-
-  const positions = [];
-  const solPrice = parseFloat(data.solPrice || 0);
-
-  for (const pool of pools) {
-    try {
-      const positionPubkeys = pool.listPositions || [];
-
-      // Pool-level totals from the API (already in SOL)
-      const poolBalanceSol = parseFloat(pool.balancesSol || 0);
-      const poolPnlSol     = parseFloat(pool.pnlSol || 0);
-      const poolFeesSol    = parseFloat(pool.unclaimedFeesSol || 0);
-      const poolPnlPct     = parseFloat(pool.pnlPctChange || 0);
-      const isOutOfRange   = pool.outOfRange || false;
-
-      // If only 1 position in pool, assign full pool totals
-      // If multiple, divide evenly (best approximation without on-chain per-position data)
-      const count = positionPubkeys.length || 1;
-
-      for (const posPubkey of positionPubkeys) {
-        let lowerBinId = 0, upperBinId = 0;
-        try {
-          const acct = await rpcCall('getAccountInfo', [posPubkey, { encoding: 'base64' }]);
-          if (acct?.value?.data?.[0]) {
-            const raw = Uint8Array.from(atob(acct.value.data[0]), c => c.charCodeAt(0));
-            const view = new DataView(raw.buffer);
-            lowerBinId = view.getInt32(72, true);
-            upperBinId = view.getInt32(76, true);
-          }
-        } catch(e) { /* use 0,0 fallback */ }
-
-        positions.push({
-          positionAddress: posPubkey,
-          poolAddress:     pool.poolAddress,
-          pairName:        `${pool.tokenX}/${pool.tokenY}`,
-          quoteSymbol:     pool.tokenY,
-          valueSol:        poolBalanceSol / count,
-          pnlSol:          poolPnlSol / count,
-          feesSol:         poolFeesSol / count,
-          pnlPct:          poolPnlPct,
-          isOutOfRange,
-          isPoolGroup:     count > 1,
-        });
-      }
-    } catch(e) {
-      console.warn('Error processing pool:', pool.poolAddress, e);
     }
-  }
+  } catch(e) { console.warn('closed fetch error', e); }
 
-  return { positions, closedPositions };
+  return { positions, closedPositions, solPrice };
 }
 
 // Compatibility shim
@@ -814,7 +802,7 @@ function renderCards(walletsData) {
               </div>
               <div class="cp-cell highlight">${fmtSOL(pos.valueSol)}</div>
               <div class="cp-cell ${pClass}">${fmtPnl(pos.pnlSol)}<span style="font-size:9px;opacity:0.7">${pnlPctStr}</span></div>
-              <div class="cp-cell" style="color:var(--blue)">${fmtSOL(pos.feesSol)}</div>
+              <div class="cp-cell" style="color:var(--blue)">${fmtSOL(pos.unclaimedFeesSol)}</div>
             </div>`;
           }).join('');
 
@@ -972,14 +960,14 @@ function addWallet(addr, label) {
     document.getElementById('addBtn').disabled = true;
   }
   showToast(`Added: ${name}`, 'success');
-  if (getHeliosKey()) refreshAll(true);
+  refreshAll(true);
 }
 
 function removeWallet(address) {
   saveWallets(loadWallets().filter(w => w.address !== address));
   renderWalletList();
   showToast('Wallet removed', '');
-  if (getHeliosKey()) refreshAll(true);
+  refreshAll(true);
 }
 
 function startRename(address) {
@@ -1086,34 +1074,20 @@ function renderWalletList() {
 // SETTINGS
 // ═══════════════════════════════════════════════════════════════════
 function openSettings() {
-  const current = getHeliosKey();
-  const masked = current ? current.slice(0,6) + '••••••••' + current.slice(-4) : '';
   const html = `
     <div style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;" id="settingsModal" onclick="if(event.target.id==='settingsModal')closeSettings()">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 32px;max-width:420px;width:90%;">
         <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;">⚙ Settings</div>
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Helius API Key</div>
-        ${current ? `<div style="font-size:10px;color:var(--text2);margin-bottom:8px;">Current: <span style="color:var(--green)">${masked}</span></div>` : ''}
-        <div style="display:flex;gap:8px;margin-bottom:16px;">
-          <input id="newKeyInput" class="drawer-input" style="flex:1;" placeholder="Paste new Helius API key…" />
-          <button class="drawer-add-btn" onclick="updateKey()">Save</button>
-        </div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Data Source</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:16px;">Meteora DLMM DataPI <span style="color:var(--green);">● Connected</span></div>
         <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Auto-refresh</div>
-        <div style="font-size:11px;color:var(--text2);margin-bottom:16px;">Every 5 minutes (hardcoded, adjustable in future)</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:16px;">Every 30 minutes</div>
         <button onclick="closeSettings()" style="width:100%;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;">Close</button>
       </div>
     </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
-function updateKey() {
-  const k = document.getElementById('newKeyInput').value.trim();
-  if (!k) { showToast('Enter a key first', 'error'); return; }
-  saveHeliusKey(k);
-  closeSettings();
-  showToast('API key updated!', 'success');
-  refreshAll();
-}
 
 function closeSettings() {
   const m = document.getElementById('settingsModal');
@@ -1152,12 +1126,18 @@ function showToast(msg, type) {
 // ═══════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════
+// Pre-load wallet if none exist
+const DEFAULT_WALLET = '7tB8WHYKxSpxcL4UgaAcXFVfoLw37rJqfkBPnv8ChYQi';
+(function ensureDefaultWallet() {
+  const wallets = loadWallets();
+  if (!wallets.length) {
+    wallets.push({ address: DEFAULT_WALLET, name: DEFAULT_WALLET, addedAt: Date.now() });
+    saveWallets(wallets);
+  }
+})();
+
 renderWalletList();
-if (!getHeliosKey()) {
-  showSetupScreen();
-} else {
-  startApp();
-}
+startApp();
 </script>
 </body>
 </html>
