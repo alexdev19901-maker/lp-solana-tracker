@@ -664,24 +664,59 @@ async function fetchWalletPositions(walletAddress) {
     }
   }
 
-  // 3) Fetch closed positions from the general portfolio endpoint
+  // 3) Fetch closed positions using per-position PnL API
   let closedPositions = [];
   try {
+    // First get pool list from general portfolio to find pools with closed positions
     const closedRes = await fetch(`https://dlmm.datapi.meteora.ag/portfolio?user=${walletAddress}&pageSize=20`);
     if (closedRes.ok) {
       const cd = await closedRes.json();
-      closedPositions = (cd.pools || [])
-        .filter(p => p.lastClosedAt)
-        .sort((a, b) => b.lastClosedAt - a.lastClosedAt)
-        .slice(0, 5)
-        .map(p => ({
-          pairName:        `${p.tokenX}/${p.tokenY}`,
-          poolAddress:     p.poolAddress,
-          closedAt:        p.lastClosedAt,
-          pnlSol:          parseFloat(p.pnlSol || 0),
-          pnlPct:          parseFloat(p.pnlSolPctChange || 0),
-          totalFeesSol:    parseFloat(p.totalFeeSol || 0),
-        }));
+      const poolsWithClosed = (cd.pools || []).filter(p => p.lastClosedAt);
+
+      // For each pool with closed positions, fetch per-position closed PnL in parallel
+      const closedPnlResults = await Promise.all(
+        poolsWithClosed.map(pool =>
+          fetch(`https://dlmm.datapi.meteora.ag/positions/${pool.poolAddress}/pnl?user=${walletAddress}&status=closed&page=1`)
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null)
+        )
+      );
+
+      for (let i = 0; i < poolsWithClosed.length; i++) {
+        const pool = poolsWithClosed[i];
+        const pnlData = closedPnlResults[i];
+
+        if (pnlData && pnlData.positions && pnlData.positions.length > 0) {
+          // Use accurate per-position data
+          for (const pos of pnlData.positions) {
+            const fees = pos.allTimeFees || {};
+            closedPositions.push({
+              pairName:        `${pool.tokenX}/${pool.tokenY}`,
+              poolAddress:     pool.poolAddress,
+              positionAddress: pos.positionAddress,
+              closedAt:        pos.closedAt || pool.lastClosedAt,
+              pnlSol:          parseFloat(pos.pnlSol || 0),
+              pnlPct:          parseFloat(pos.pnlSolPctChange || 0),
+              totalFeesSol:    parseFloat(fees.total?.sol || 0),
+            });
+          }
+        } else {
+          // Fallback: pool-level data if per-position API fails
+          closedPositions.push({
+            pairName:        `${pool.tokenX}/${pool.tokenY}`,
+            poolAddress:     pool.poolAddress,
+            positionAddress: '',
+            closedAt:        pool.lastClosedAt,
+            pnlSol:          parseFloat(pool.pnlSol || 0),
+            pnlPct:          parseFloat(pool.pnlSolPctChange || 0),
+            totalFeesSol:    parseFloat(pool.totalFeeSol || 0),
+          });
+        }
+      }
+
+      // Sort by close time descending, take last 5
+      closedPositions.sort((a, b) => (b.closedAt || 0) - (a.closedAt || 0));
+      closedPositions = closedPositions.slice(0, 5);
     }
   } catch(e) { console.warn('closed fetch error', e); }
 
