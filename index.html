@@ -128,10 +128,12 @@
   /* COLUMN HEADERS */
   .card-col-headers {
     display: grid;
-    grid-template-columns: minmax(0,1fr) 90px 100px 88px;
+    grid-template-columns: minmax(0,auto) 78px 88px 74px;
     padding: 4px 14px;
     border-bottom: 1px solid var(--border);
     background: var(--bg);
+    justify-content: start;
+    gap: 0 4px;
   }
   .cc-h {
     font-size: 10px; color: var(--text3);
@@ -143,11 +145,13 @@
   /* POSITION ROW */
   .card-pos-row {
     display: grid;
-    grid-template-columns: minmax(0,1fr) 90px 100px 88px;
-    padding: 7px 14px;
+    grid-template-columns: minmax(0,auto) 78px 88px 74px;
+    padding: 6px 14px;
     border-bottom: 1px solid var(--border)44;
     align-items: center;
     transition: background 0.1s;
+    justify-content: start;
+    gap: 0 4px;
   }
   .card-pos-row:last-child { border-bottom: none; }
   .card-pos-row:hover { background: var(--surface2); }
@@ -189,9 +193,10 @@
 
 
   .cp-cell {
-    font-size: 13px; color: var(--text2);
+    font-size: 11px; color: var(--text2);
     text-align: right;
     font-weight: 500;
+    white-space: nowrap;
   }
   .cp-cell.highlight { color: var(--text); font-weight: 600; }
   .val-pos { color: var(--green) !important; }
@@ -429,8 +434,8 @@
   .closed-header { display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--bg);border-bottom:1px solid var(--border); }
   .closed-label { font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-weight:700; }
   .closed-line { flex:1;height:1px;background:var(--border); }
-  .closed-col-headers { display:grid;grid-template-columns:minmax(0,1fr) 100px 88px 80px;padding:3px 14px;background:var(--bg);border-bottom:1px solid var(--border); }
-  .closed-pos-row { display:grid;grid-template-columns:minmax(0,1fr) 100px 88px 80px;padding:6px 14px;border-bottom:1px solid var(--border)33;align-items:center;opacity:.72;transition:opacity .1s; }
+  .closed-col-headers { display:grid;grid-template-columns:minmax(0,auto) 95px 80px 60px;padding:3px 14px;background:var(--bg);border-bottom:1px solid var(--border);justify-content:start;gap:0 8px; }
+  .closed-pos-row { display:grid;grid-template-columns:minmax(0,auto) 95px 80px 60px;padding:6px 14px;border-bottom:1px solid var(--border)33;align-items:center;opacity:.72;transition:opacity .1s;justify-content:start;gap:0 8px; }
   .closed-pos-row:hover { opacity:1; }
   .closed-pos-row:last-child { border-bottom:none; }
   .cp-closed-pair { font-size:12px;font-weight:600;color:var(--text2); }
@@ -449,12 +454,6 @@
   <div class="nav-sep"></div>
   <div class="nav-info">PROTOCOL <span>METEORA DLMM</span></div>
   <div class="nav-right">
-    <div class="nav-stat"><div class="nav-stat-val" id="navWallets">0</div><div class="nav-stat-label">Wallets</div></div>
-    <div class="nav-sep"></div>
-    <div class="nav-stat"><div class="nav-stat-val" id="navTotalVal">—</div><div class="nav-stat-label">Total Value</div></div>
-    <div class="nav-sep"></div>
-    <div class="nav-stat"><div class="nav-stat-val" id="navTotalPnl">—</div><div class="nav-stat-label">P&L</div></div>
-    <div class="nav-sep"></div>
     <div class="nav-stat" style="align-items:center;">
       <div class="nav-stat-val" style="font-size:10px;color:var(--text3)" id="refreshCountdown">—:——</div>
       <div class="nav-stat-label">Next refresh</div>
@@ -716,7 +715,7 @@ async function fetchWalletPositions(walletAddress) {
 
       // Sort by close time descending, take last 5
       closedPositions.sort((a, b) => (b.closedAt || 0) - (a.closedAt || 0));
-      closedPositions = closedPositions.slice(0, 5);
+      closedPositions = closedPositions.slice(0, 3);
     }
   } catch(e) { console.warn('closed fetch error', e); }
 
@@ -747,6 +746,23 @@ function fmtPnl(n) {
   if (!n || isNaN(n)) return '—';
   const sign = n >= 0 ? '+' : '';
   return sign + fmtSOL(n);
+}
+
+function fmtPrice(n) {
+  if (!n || isNaN(n)) return '—';
+  const abs = Math.abs(n);
+  if (abs >= 1000) return n.toFixed(1);
+  if (abs >= 1) return n.toFixed(2);
+  if (abs >= 0.001) return n.toFixed(4);
+  if (abs >= 0.000001) return n.toFixed(7);
+  return n.toExponential(2);
+}
+
+function fmtMinutes(ts) {
+  if (!ts) return '';
+  const mins = Math.floor((Date.now() / 1000 - ts) / 60);
+  if (mins < 0) return 'just now';
+  return mins.toLocaleString('en') + ' min ago';
 }
 
 
@@ -813,7 +829,7 @@ function renderCards(walletsData) {
     `<div class="masonry-col">${col.map(({wd, wi}) => {
       const wallet = wd.wallet;
       const positions = wd.positions || [];
-      const short = wallet.address.slice(0,4) + '…' + wallet.address.slice(-4);
+      const short = wallet.address.slice(0,6) + '…' + wallet.address.slice(-6);
 
       const totalVal = positions.reduce((s, p) => s + (p.valueSol || 0), 0);
       const totalPnl = positions.reduce((s, p) => s + (p.pnlSol || 0), 0);
@@ -825,15 +841,17 @@ function renderCards(walletsData) {
             const pClass = (pos.pnlSol || 0) >= 0 ? 'val-pos' : 'val-neg';
             const poolUrl = `https://app.meteora.ag/dlmm/${pos.poolAddress}`;
             const pnlPctStr = pos.pnlPct ? ` (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : '';
-            const oorTag = pos.isOutOfRange ? `<span style="font-size:9px;padding:2px 5px;border-radius:3px;background:var(--red-dim);color:var(--red);border:1px solid var(--red)33;font-weight:700;letter-spacing:0.3px;">OUT OF RANGE</span>` : '';
+            const oorTag = pos.isOutOfRange ? `<span style="font-size:7px;padding:1px 3px;border-radius:2px;background:var(--red-dim);color:var(--red);border:1px solid var(--red)33;font-weight:700;letter-spacing:0.2px;line-height:1;">off rng</span>` : '';
             return `
             <div class="card-pos-row">
               <div class="cp-left">
-                <div style="display:flex;align-items:center;gap:8px;">
+                <div style="display:flex;align-items:center;gap:5px;">
                   <div class="cp-pair">${pos.pairName}</div>
                   <a class="meteora-link" href="${poolUrl}" target="_blank">${METEORA_SVG}<span class="meteora-link-text">Pool</span></a>
                   ${oorTag}
                 </div>
+                ${pos.minPrice ? `<div style="font-size:10px;font-weight:500;margin-top:2px;"><span style="color:var(--green)">${fmtPrice(pos.minPrice)}</span> <span style="color:var(--text3)">—</span> <span style="color:var(--purple)">${fmtPrice(pos.activePrice)}</span> <span style="color:var(--text3)">—</span> <span style="color:var(--green)">${fmtPrice(pos.maxPrice)}</span></div>` : ''}
+                ${pos.createdAt ? `<div style="font-size:9px;color:var(--text3);margin-top:1px;">opened ${fmtMinutes(pos.createdAt)}</div>` : ''}
               </div>
               <div class="cp-cell highlight">${fmtSOL(pos.valueSol)}</div>
               <div class="cp-cell ${pClass}">${fmtPnl(pos.pnlSol)}<span style="font-size:9px;opacity:0.7">${pnlPctStr}</span></div>
@@ -845,7 +863,7 @@ function renderCards(walletsData) {
       <div class="wallet-card" style="animation-delay:${wi * 0.06}s">
         <div class="card-header">
           <div class="card-addr-row">
-            <div class="card-addr" title="${wallet.address}">${wallet.address}</div>
+            <div class="card-addr" title="${wallet.address}">${short}</div>
             <button class="card-copy" onclick="copyAddrBtn(this,'${wallet.address}')">copy</button>
           </div>
           <div class="card-totals">
@@ -924,14 +942,6 @@ async function refreshAll(silent = false) {
 
   const ordered = wallets.map(w => results.find(r => r.wallet.address === w.address) || { wallet: w, positions: [] });
   renderCards(ordered);
-
-  const allPos = ordered.flatMap(r => r.positions);
-  const totalVal = allPos.reduce((s, p) => s + (p.valueSol || 0), 0);
-  const totalPnl = allPos.reduce((s, p) => s + (p.pnlSol || 0), 0);
-  document.getElementById('navTotalVal').textContent = fmtSOL(totalVal);
-  document.getElementById('navTotalPnl').textContent = fmtPnl(totalPnl);
-  document.getElementById('navTotalPnl').className = 'nav-stat-val ' + (totalPnl >= 0 ? 'val-pos' : 'val-neg');
-  document.getElementById('navWallets').textContent = wallets.length;
 
   updateRefreshBtn('↻ Refresh', false);
   scheduleNextRefresh();
