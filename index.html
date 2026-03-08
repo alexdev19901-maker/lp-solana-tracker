@@ -128,12 +128,10 @@
   /* COLUMN HEADERS */
   .card-col-headers {
     display: grid;
-    grid-template-columns: minmax(0,auto) 78px 88px 74px;
+    grid-template-columns: minmax(0,1fr) 82px 95px 80px;
     padding: 4px 14px;
     border-bottom: 1px solid var(--border);
     background: var(--bg);
-    justify-content: start;
-    gap: 0 4px;
   }
   .cc-h {
     font-size: 10px; color: var(--text3);
@@ -145,13 +143,11 @@
   /* POSITION ROW */
   .card-pos-row {
     display: grid;
-    grid-template-columns: minmax(0,auto) 78px 88px 74px;
+    grid-template-columns: minmax(0,1fr) 82px 95px 80px;
     padding: 6px 14px;
     border-bottom: 1px solid var(--border)44;
     align-items: center;
     transition: background 0.1s;
-    justify-content: start;
-    gap: 0 4px;
   }
   .card-pos-row:last-child { border-bottom: none; }
   .card-pos-row:hover { background: var(--surface2); }
@@ -762,7 +758,9 @@ function fmtMinutes(ts) {
   if (!ts) return '';
   const mins = Math.floor((Date.now() / 1000 - ts) / 60);
   if (mins < 0) return 'just now';
-  return mins.toLocaleString('en') + ' min ago';
+  if (mins < 60) return mins + ' min ago';
+  const hrs = (mins / 60).toFixed(1);
+  return hrs + 'h ago';
 }
 
 
@@ -867,8 +865,8 @@ function renderCards(walletsData) {
             <button class="card-copy" onclick="copyAddrBtn(this,'${wallet.address}')">copy</button>
           </div>
           <div class="card-totals">
-            <div class="card-total-val">${fmtSOL(totalVal)}</div>
-            <div class="card-pnl ${pnlClass}">${fmtPnl(totalPnl)}</div>
+            ${positions.length ? `<div class="card-total-val">${fmtSOL(totalVal)}</div>
+            <div class="card-pnl ${pnlClass}">${fmtPnl(totalPnl)}</div>` : ''}
           </div>
         </div>
         <div class="card-col-headers">
